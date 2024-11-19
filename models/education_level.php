@@ -1,9 +1,9 @@
 <?php
 
 require_once __DIR__ . '/../functions/mysql_connection.php';
-require_once __DIR__ . '/base_model.php';
+require_once __DIR__ . '/../functions/base_object.php';
 
-final class EducationLevel implements BaseModel {
+final class EducationLevel implements BaseObject {
     private static $select = 
         'SELECT codigo, descripcion, edad_minima, edad_maxima, cantidad_grados 
          FROM niveles_educativos 
@@ -42,7 +42,7 @@ final class EducationLevel implements BaseModel {
     }
 
     public function to_json_string() : string {
-        $data = [
+        $json = [
             'code' => $this->code,
             'description'=> $this->description,
             'minimum_age' => $this->minimum_age,
@@ -50,7 +50,7 @@ final class EducationLevel implements BaseModel {
             'grade_count'=> $this->grade_count
         ];
 
-        return json_encode($data);
+        return json_encode($json);
     }
 
     // constructor
@@ -72,15 +72,15 @@ final class EducationLevel implements BaseModel {
         // declare variable to store the retrieved object
         $level = null;
         // open a new connection
-        $connection = MySqlConnection::open_connection();
+        $conn = MySqlConnection::open_connection();
         // prepare statement
-        $command = $connection->prepare(self::$select);
+        $stmt = $conn->prepare(self::$select);
         // bind param
-        $command->bind_param('s', $code);
+        $stmt->bind_param('s', $code);
         // execute statement
-        $command->execute();
+        $stmt->execute();
         // bind results
-        $command->bind_result(
+        $stmt->bind_result(
             $code, 
             $description, 
             $minimum_age, 
@@ -89,16 +89,16 @@ final class EducationLevel implements BaseModel {
         );
 
         // read result
-        if ($command->fetch()) {
+        if ($stmt->fetch()) {
             $level = new EducationLevel(
                 $code, $description, $minimum_age, $maximum_age, $grade_count
             );
         }
 
         // deallocate resources
-        $command->close();
+        $stmt->close();
         // close connection
-        $connection->close();
+        $conn->close();
 
         return $level;
     }
@@ -107,13 +107,13 @@ final class EducationLevel implements BaseModel {
         // create empty array
         $list = [];
         // open a new connection
-        $connection = MySqlConnection::open_connection();
+        $conn = MySqlConnection::open_connection();
         // prepare statement
-        $command = $connection->prepare(self::$select_all);
+        $stmt = $conn->prepare(self::$select_all);
         // execute statement
-        $command->execute();
+        $stmt->execute();
         // bind results
-        $command->bind_result(
+        $stmt->bind_result(
             $code, 
             $name, 
             $minimum_age, 
@@ -122,7 +122,7 @@ final class EducationLevel implements BaseModel {
         );
 
         // read result
-        while ($command->fetch()) {
+        while ($stmt->fetch()) {
             array_push(
                 $list, 
                 new EducationLevel(
@@ -136,9 +136,9 @@ final class EducationLevel implements BaseModel {
         }
 
         // deallocate resources
-        $command->close();
+        $stmt->close();
         // close connection
-        $connection->close();
+        $conn->close();
 
         return $list;
     }

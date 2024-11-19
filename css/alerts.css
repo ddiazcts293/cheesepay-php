@@ -1,0 +1,59 @@
+:root {
+    --alert-danger-fg: #FEF2F2;
+    --alert-danger-bg: #DC2626;
+    --alert-warning-fg: #FFFBEB;
+    --alert-warning-bg: #D97706;
+    --alert-success-fg: #ECFDF5;
+    --alert-success-bg: #059669;
+    --alert-info-fg: #F0F9FF;
+    --alert-info-bg: #0284C7;
+}
+
+.alert {
+    position: relative;
+    float: left;
+    width: calc(100% - 48px);
+    margin: 8px;
+    padding: 8px 16px 8px 16px;
+    border-radius: 2px;
+    opacity: 1;
+    transition: opacity 0.6s;
+}
+
+.alert-info {
+    color: var(--alert-info-fg);
+    background-color: var(--alert-info-bg);
+}
+
+.alert-success {
+    color: var(--alert-success-fg);
+    background-color: var(--alert-success-bg);
+}
+
+.alert-warning {
+    color: var(--alert-warning-fg);
+    background-color: var(--alert-warning-bg);
+}
+
+.alert-danger {
+    color: var(--alert-danger-fg);
+    background-color: var(--alert-danger-bg);
+}
+
+.alert-hidden {
+    display: none;
+}
+
+.alert-close-btn {
+    float: right;
+    font-size: 22px;
+    font-weight: bold;
+    line-height: 20px;
+    margin-left: 16px;
+    transition: 0.3s;
+}
+
+.alert-close-btn:hover,
+.alert-close-btn:focus {
+    cursor: pointer;
+}

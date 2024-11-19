@@ -2,32 +2,18 @@
 
 require_once __DIR__ . '/../functions/mysql_connection.php';
 require_once __DIR__ . '/relationship.php';
+require_once __DIR__ . '/person.php';
 
-final class Tutor {
-    private $tutor_number;
-    private $name;
-    private $first_surname;
-    private $last_surname;
+final class Tutor extends Person {
+    private $number;
     private $rfc;
     private $email;
     private $phone_number;
     private $profession;
     private $relationship;
 
-    public function get_tutor_number() : string {
-        return $this->tutor_number;
-    }
-
-    public function get_name() : string {
-        return $this->name;
-    }
-
-    public function get_first_surname() : string {
-        return $this->first_surname;
-    }
-
-    public function get_last_surname() : string|null {
-        return $this->last_surname;
+    public function get_number() : string {
+        return $this->number;
     }
 
     public function get_rfc() : string {
@@ -52,7 +38,7 @@ final class Tutor {
 
     // constructor
     public function __construct(
-        $tutor_number,
+        $number,
         $name,
         $first_surname,
         $last_surname,
@@ -62,7 +48,7 @@ final class Tutor {
         $profession,
         $relationship
     ) {
-        $this->tutor_number = $tutor_number;
+        $this->number = $number;
         $this->name = $name;
         $this->first_surname = $first_surname;
         $this->last_surname = $last_surname;

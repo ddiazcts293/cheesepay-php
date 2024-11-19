@@ -1,11 +1,11 @@
 <?php
 
 require_once __DIR__ . '/../functions/mysql_connection.php';
-require_once __DIR__ . '/base_model.php';
+require_once __DIR__ . '/../functions/base_object.php';
 require_once __DIR__ . '/school_year.php';
 require_once __DIR__ . '/education_level.php';
 
-final class Group implements BaseModel {
+final class Group implements BaseObject {
     private static $select = 
         'SELECT  
          FROM groupos 
@@ -74,15 +74,15 @@ final class Group implements BaseModel {
         // declare variable to store the retrieved object
         $level = null;
         // open a new connection
-        $connection = MySqlConnection::open_connection();
+        $conn = MySqlConnection::open_connection();
         // prepare statement
-        $command = $connection->prepare(self::$select);
+        $stmt = $conn->prepare(self::$select);
         // bind param
-        $command->bind_param('s', $code);
+        $stmt->bind_param('s', $code);
         // execute statement
-        $command->execute();
+        $stmt->execute();
         // bind results
-        $command->bind_result(
+        $stmt->bind_result(
             $code, 
             $description, 
             $minimum_age, 
@@ -91,16 +91,16 @@ final class Group implements BaseModel {
         );
 
         // read result
-        if ($command->fetch()) {
+        if ($stmt->fetch()) {
             $level = new EducationLevel(
                 $code, $description, $minimum_age, $maximum_age, $grade_count
             );
         }
 
         // deallocate resources
-        $command->close();
+        $stmt->close();
         // close connection
-        $connection->close();
+        $conn->close();
 
         return $level;
     }
@@ -109,13 +109,13 @@ final class Group implements BaseModel {
         // create empty array
         $list = [];
         // open a new connection
-        $connection = MySqlConnection::open_connection();
+        $conn = MySqlConnection::open_connection();
         // prepare statement
-        $command = $connection->prepare(self::$select_all);
+        $stmt = $conn->prepare(self::$select_all);
         // execute statement
-        $command->execute();
+        $stmt->execute();
         // bind results
-        $command->bind_result(
+        $stmt->bind_result(
             $code, 
             $name, 
             $minimum_age, 
@@ -124,7 +124,7 @@ final class Group implements BaseModel {
         );
 
         // read result
-        while ($command->fetch()) {
+        while ($stmt->fetch()) {
             array_push(
                 $list, 
                 new EducationLevel(
@@ -138,9 +138,9 @@ final class Group implements BaseModel {
         }
 
         // deallocate resources
-        $command->close();
+        $stmt->close();
         // close connection
-        $connection->close();
+        $conn->close();
 
         return $list;
     }

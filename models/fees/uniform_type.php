@@ -1,17 +1,20 @@
 <?php
 
-require_once __DIR__ . '/../functions/mysql_connection.php';
+require_once __DIR__ . '/../../functions/mysql_connection.php';
 
-class Gender {
-    private static $select_all = 'SELECT codigo, descripcion FROM generos';
+final class UniformType {
+    private static $select_all = 'SELECT 
+            numero, 
+            descripcion 
+        FROM tipos_uniformes';
 
     // attributes
-    private $code;
+    private $number;
     private $description;
 
     // getters
-    public function get_code() : string {
-        return $this->code;
+    public function get_number() : int {
+        return $this->number;
     }
 
     public function get_description() : string {
@@ -19,8 +22,8 @@ class Gender {
     }
 
     // constructor
-    public function __construct(string $code, string $description) {
-        $this->code = $code;
+    public function __construct(int $number, string $description) {
+        $this->number = $number;
         $this->description = $description;
     }
 
@@ -38,7 +41,7 @@ class Gender {
 
         // read result
         while ($stmt->fetch()) {
-            array_push($list, new Gender($id, $name));
+            array_push($list, new UniformType($id, $name));
         }
 
         // deallocate resources

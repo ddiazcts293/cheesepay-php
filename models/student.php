@@ -5,8 +5,9 @@ require_once __DIR__ . '/enrollment_status.php';
 require_once __DIR__ . '/gender.php';
 require_once __DIR__ . '/tutor.php';
 require_once __DIR__ . '/group.php';
+require_once __DIR__ . '/person.php';
 
-final class Student {
+final class Student extends Person {
     private static $select = 'SELECT
             a.matricula,
             a.nombre_de_pila,
@@ -41,11 +42,10 @@ final class Student {
             t.ocupacion,
             p.numero,
             p.descripcion
-        FROM alumnos AS a
-        INNER JOIN tutor_alumnos AS ta ON a.matricula = ta.alumno
+        FROM tutor_alumnos AS ta
         INNER JOIN tutores AS t ON ta.tutor = t.numero
         INNER JOIN parentescos AS p ON ta.parentesco_tutor = p.numero
-        WHERE a.matricula = ?';
+        WHERE ta.alumno = ?';
 
     private static $select_groups = 'SELECT
             g.numero,
@@ -66,13 +66,21 @@ final class Student {
         WHERE ga.alumno = ?
         ORDER BY g.numero DESC';
 
+    private static $update_address = 'UPDATE alumnos SET 
+            direccion_calle = ?,
+            direccion_numero = ?,
+            direccion_colonia = ?,
+            direccion_cp = ?
+        WHERE matricula = ?';
+    
+    private static $update_ssn = 'UPDATE alumnos 
+        SET nss = ?
+        WHERE matricula = ?';
+
     private $student_id;
-    private $name;
-    private $first_surname;
-    private $last_surname;
     private $gender;
     private $curp;
-    private $nss;
+    private $ssn;
     private $birth_date;
     private $address_street;
     private $address_number;
@@ -86,18 +94,6 @@ final class Student {
         return $this->student_id;
     }
 
-    public function get_name() : string {
-        return $this->name;
-    }
-
-    public function get_first_surname() : string {
-        return $this->first_surname;
-    }
-
-    public function get_last_surname() : string|null {
-        return $this->last_surname;
-    }
-
     public function get_gender() : Gender {
         return $this->gender;
     }
@@ -106,8 +102,8 @@ final class Student {
         return $this->curp;
     }
 
-    public function get_nss() : string|null {
-        return $this->nss;
+    public function get_ssn() : string|null {
+        return $this->ssn;
     }
 
     public function get_birth_date() : string {
@@ -146,15 +142,15 @@ final class Student {
         // declare variable to store the retrieved objects
         $tutors = [];
         // open a new connection
-        $connection = MySqlConnection::open_connection();
+        $conn = MySqlConnection::open_connection();
         // prepare statement
-        $command = $connection->prepare(self::$select_tutors);
+        $stmt = $conn->prepare(self::$select_tutors);
         // bind param
-        $command->bind_param('s', $this->student_id);
+        $stmt->bind_param('s', $this->student_id);
         // execute statement
-        $command->execute();
+        $stmt->execute();
         // bind results
-        $command->bind_result(
+        $stmt->bind_result(
             $tutor_number,
             $tutor_name,
             $tutor_first_surname,
@@ -168,7 +164,7 @@ final class Student {
         );
 
         // read result
-        while ($command->fetch()) {
+        while ($stmt->fetch()) {
             array_push(
                 $tutors, 
                 new Tutor(
@@ -189,9 +185,9 @@ final class Student {
         }
 
         // deallocate resources
-        $command->close();
+        $stmt->close();
         // close connection
-        $connection->close();
+        $conn->close();
 
         return $tutors;
     }
@@ -200,15 +196,15 @@ final class Student {
         // declare variable to store the retrieved objects
         $groups = [];
         // open a new connection
-        $connection = MySqlConnection::open_connection();
+        $conn = MySqlConnection::open_connection();
         // prepare statement
-        $command = $connection->prepare(self::$select_groups);
+        $stmt = $conn->prepare(self::$select_groups);
         // bind param
-        $command->bind_param('s', $this->student_id);
+        $stmt->bind_param('s', $this->student_id);
         // execute statement
-        $command->execute();
+        $stmt->execute();
         // bind results
-        $command->bind_result(
+        $stmt->bind_result(
             $number,
             $grade,
             $letter,
@@ -223,7 +219,7 @@ final class Student {
         );
 
         // read result
-        while ($command->fetch()) {
+        while ($stmt->fetch()) {
             array_push(
                 $groups, 
                 new Group(
@@ -247,9 +243,9 @@ final class Student {
         }
 
         // deallocate resources
-        $command->close();
+        $stmt->close();
         // close connection
-        $connection->close();
+        $conn->close();
 
         return $groups;
     }
@@ -263,54 +259,115 @@ final class Student {
         }
     }
 
+    public function update_address(
+        string $street, 
+        string $number,
+        string $district,
+        string $zip_code
+    ) : bool {
+        // open a new connection
+        $conn = MySqlConnection::open_connection();
+        // begin a transaction
+        $conn->begin_transaction(MYSQLI_TRANS_START_READ_WRITE);
+        // prepare statement
+        $stmt = $conn->prepare(self::$update_address);
+        // bind params
+        $stmt->bind_param(
+            'sssss', 
+            $street,
+            $number,
+            $district,
+            $zip_code,
+            $this->student_id,
+        );
+        // execute statement
+        $success = $stmt->execute();
+        // commit the transaction
+        $conn->commit();
+        // deallocate resources
+        $stmt->close();
+        // close connection
+        $conn->close();
+
+        // checks if the update was successful
+        if ($success) {
+            // update object attributes
+            $this->street = $street;
+            $this->number = $number;
+            $this->district = $district;
+            $this->zip_code = $zip_code;
+        }
+
+        return $success;
+    }
+
+    public function update_ssn(string $ssn) : bool {
+        // open a new connection
+        $conn = MySqlConnection::open_connection();
+        // begin a transaction
+        $conn->begin_transaction(MYSQLI_TRANS_START_READ_WRITE);
+        // prepare statement
+        $stmt = $conn->prepare(self::$update_ssn);
+        // bind params
+        $stmt->bind_param('ss', $ssn, $this->student_id);
+        // execute statement
+        $success = $stmt->execute();
+        // commit the transaction
+        $conn->commit();
+        // deallocate resources
+        $stmt->close();
+        // close connection
+        $conn->close();
+
+        // checks if the update was successful
+        if ($success) {
+            // update object attributes
+            $this->ssn = $ssn;
+        }
+
+        return $success;
+    }
+
     // constructor
-    public function __construct(
-        $student_id,
-        $name,
-        $first_surname,
-        $last_surname,
-        $gender,
-        $curp,
-        $nss,
-        $birth_date,
-        $address_street,
-        $address_number,
-        $address_district,
-        $address_zip,
-        $registration_date,
-        $deregistration_date,
-        $status
-    ) {
-        $this->student_id = $student_id;
-        $this->name = $name;
-        $this->first_surname = $first_surname;
-        $this->last_surname = $last_surname;
-        $this->gender = $gender;
-        $this->curp = $curp;
-        $this->nss = $nss;
-        $this->birth_date = $birth_date;
-        $this->address_street = $address_street;
-        $this->address_number = $address_number;
-        $this->address_district = $address_district;
-        $this->address_zip = $address_zip;
-        $this->registration_date = $registration_date;
-        $this->deregistration_date = $deregistration_date;
-        $this->status = $status;
+    public function __construct() {
+        $num_args = func_num_args();
+        
+        if ($num_args >= 1) {
+            $this->student_id = func_get_arg(0);
+        }
+        if ($num_args >= 4) {
+            $this->name = func_get_arg(1);
+            $this->first_surname = func_get_arg(2);
+            $this->last_surname = func_get_arg(3);
+        }
+        if ($num_args == 15) {
+            $this->gender = func_get_arg(4);
+            $this->curp = func_get_arg(5);
+            $this->ssn = func_get_arg(6);
+            $this->birth_date = func_get_arg(7);
+            $this->address_street = func_get_arg(8);
+            $this->address_number = func_get_arg(9);
+            $this->address_district = func_get_arg(10);
+            $this->address_zip = func_get_arg(11);
+            $this->registration_date = func_get_arg(12);
+            $this->deregistration_date = func_get_arg(13);
+            $this->status = func_get_arg(14);
+        }
     }
 
     public static function get(string $student_id): Student|null {
         // declare variable to store the retrieved object
         $student = null;
         // open a new connection
-        $connection = MySqlConnection::open_connection();
+        $conn = MySqlConnection::open_connection();
         // prepare statement
-        $command = $connection->prepare(self::$select);
+        $stmt = $conn->prepare(self::$select);
         // bind param
-        $command->bind_param('s', $student_id);
+        $stmt->bind_param('s', $student_id);
         // execute statement
-        $command->execute();
+        $stmt->execute();
         // bind results
-        $command->bind_result(
+        $stmt->bind_result(
             $student_id,
             $name,
             $first_surname,
@@ -318,7 +375,7 @@ final class Student {
             $gender_code,
             $gender_description,
             $curp,
-            $nss,
+            $ssn,
             $birth_date,
             $address_street,
             $address_number,
@@ -331,7 +388,7 @@ final class Student {
         );
 
         // read result
-        if ($command->fetch()) {
+        if ($stmt->fetch()) {
             $student = new Student(
                 $student_id,
                 $name,
@@ -339,7 +396,7 @@ final class Student {
                 $last_surname,
                 new Gender($gender_code, $gender_description),
                 $curp,
-                $nss,
+                $ssn,
                 $birth_date,
                 $address_street,
                 $address_number,
@@ -352,9 +409,9 @@ final class Student {
         }
 
         // deallocate resources
-        $command->close();
+        $stmt->close();
         // close connection
-        $connection->close();
+        $conn->close();
 
         return $student;
     }

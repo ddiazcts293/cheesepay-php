@@ -8,9 +8,9 @@ class MySqlConnection {
     private static $password = '@58P1h88c)X_@I][';
     
     // open connection
-    public static function open_connection(): bool|mysqli {
+    public static function open_connection(): mysqli {
         // open connection
-        $connection = mysqli_connect(
+        $conn = mysqli_connect(
             self::$server, 
             self::$user, 
             self::$password, 
@@ -18,12 +18,12 @@ class MySqlConnection {
         );
 
         // check if connection wasn't successful
-        if (!$connection) {
+        if (!$conn) {
             die('Connection failed: ' . mysqli_connect_error());
         } else {
             // set charset to utf-8
-            $connection->set_charset('utf8');
-            return $connection;
+            $conn->set_charset('utf8');
+            return $conn;
         }
     }
 }

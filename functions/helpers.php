@@ -1,9 +1,12 @@
 <?php
 
-require_once __DIR__ . '/../models/student.php';
-require_once __DIR__ . '/../models/tutor.php';
-
-function test_input($data): string {
+/**
+ * Limpia una cadena de texto removiendo espacios al inicio y al final, comillas 
+ * y carácteres especiales de HTML.
+ * @param mixed $data Cadena de texto
+ * @return string
+ */
+function satinize($data): string {
     $data = trim($data);
     $data = stripslashes($data);
     $data = htmlspecialchars($data);
@@ -11,19 +14,12 @@ function test_input($data): string {
     return $data;
 }
 
-function get_full_name($data): string {
-    $full_name = '';
-
-    if ($data instanceof Student || $data instanceof Tutor) {
-        $full_name = trim($data->get_name());
-        $full_name .= ' ' . trim($data->get_first_surname());
-
-        if (!is_null($data->get_last_surname())) {
-            $full_name .= ' ' . trim($data->get_last_surname());
-        }
-    } else {
-        $full_name = $data;
-    }
-
-    return $full_name;
+/**
+ * Devuelve una cadena de texto que representa una fecha en formato dd/mm/aaaa.
+ * @param string $date Cadena de fecha
+ * @return string
+ */
+function format_date_short(string $date): string {
+    $timestamp = strtotime($date);
+    return date('d/m/Y', $timestamp);
 }

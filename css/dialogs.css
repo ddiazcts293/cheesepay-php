@@ -1,0 +1,49 @@
+:root {
+
+}
+
+/* Modal box */
+:modal {
+    background-color: #fefefe;
+    margin-top: 25%;
+    padding: 8px 0px 8px 0px;
+    border: 1px solid #888;
+    border-radius: 8px;
+    width: 80%;
+}
+
+.dialog-header {
+    position: relative;
+    float: left;
+    width: calc(100% - 32px);
+    padding: 8px 16px 8px 16px;
+}
+
+.dialog-body {
+    position: relative;
+    float: left;
+    width: calc(100% - 32px);
+    padding: 8px 16px 8px 16px;
+}
+
+.dialog-footer {
+    position: relative;
+    float: left;
+    width: calc(100% - 32px);
+    padding: 8px 16px 8px 16px;
+}
+
+.dialog-close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    margin-left: 16px;
+    transition: 0.3s;
+    line-height: 20px;
+}
+
+.dialog-close-btn:hover,
+.dialog-close-btn:focus {
+    cursor: pointer;
+}

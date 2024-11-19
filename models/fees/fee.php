@@ -1,27 +1,36 @@
 <?php
 
-require_once __DIR__ . '/../functions/mysql_connection.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/functions/mysql_connection.php';
 
-class Relationship {
-    private static $select_all = 'SELECT numero, descripcion FROM parentescos';
+class Fee {
+    private static $select_all = 'SELECT 
+            numero, 
+            descripcion 
+        FROM tipos_uniformes';
 
     // attributes
     private $number;
-    private $description;
+    private $concept;
+    private $cost;
 
     // getters
     public function get_number() : int {
         return $this->number;
     }
 
-    public function get_description() : string {
-        return $this->description;
+    public function get_concept() : string {
+        return $this->concept;
+    }
+
+    public function get_cost() : float {
+        return $this->cost;
     }
 
     // constructor
-    public function __construct(int $number, string $description) {
+    public function __construct(int $number, string $concept, float $cost) {
         $this->number = $number;
-        $this->description = $description;
+        $this->concept = $concept;
+        $this->cost = $cost;
     }
 
     public static function get_all() : array {
@@ -38,7 +47,7 @@ class Relationship {
 
         // read result
         while ($stmt->fetch()) {
-            array_push($list, new Relationship($id, $name));
+            array_push($list, new UniformType($id, $name));
         }
 
         // deallocate resources

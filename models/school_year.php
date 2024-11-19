@@ -1,12 +1,19 @@
 <?php
 
 require_once __DIR__ . '/../functions/mysql_connection.php';
-require_once __DIR__ . '/base_model.php';
+require_once __DIR__ . '/../functions/base_object.php';
 
-final class SchoolYear implements BaseModel {
+final class SchoolYear implements BaseObject {
     private static $select_all = 
         'SELECT codigo, fecha_inicio, fecha_fin
          FROM ciclos_escolares';
+
+    private static $select_current = 'SELECT
+            codigo,
+            fecha_inicio,
+            fecha_fin
+        FROM ciclos_escolares
+        WHERE codigo = fn_obtener_ciclo_escolar_actual()';
 
     // attributes
     private $code;
@@ -54,20 +61,45 @@ final class SchoolYear implements BaseModel {
         return date('Y', $starting) . '-' . date('Y', $ending);
     }
 
+    public static function get_current() : SchoolYear {
+        // declare variable to store the retrieved object
+        $year = null;
+        // open a new connection
+        $conn = MySqlConnection::open_connection();
+        // prepare statement
+        $stmt = $conn->prepare(self::$select_current);
+        // execute statement
+        $stmt->execute();
+        // bind results
+        $stmt->bind_result($code, $starting_date, $ending_date);
+
+        // read result
+        if ($stmt->fetch()) {
+            $year = new SchoolYear($code, $starting_date, $ending_date);
+        }
+
+        // deallocate resources
+        $stmt->close();
+        // close connection
+        $conn->close();
+
+        return $year;
+    }
+
     public static function get_all() : array {
         // create empty array
         $list = [];
         // open a new connection
-        $connection = MySqlConnection::open_connection();
+        $conn = MySqlConnection::open_connection();
         // prepare statement
-        $command = $connection->prepare(self::$select_all);
+        $stmt = $conn->prepare(self::$select_all);
         // execute statement
-        $command->execute();
+        $stmt->execute();
         // bind results
-        $command->bind_result($code, $starting_date, $ending_date);
+        $stmt->bind_result($code, $starting_date, $ending_date);
 
         // read result
-        while ($command->fetch()) {
+        while ($stmt->fetch()) {
             array_push(
                 $list, 
                 new SchoolYear($code, $starting_date, $ending_date)
@@ -75,9 +107,9 @@ final class SchoolYear implements BaseModel {
         }
 
         // deallocate resources
-        $command->close();
+        $stmt->close();
         // close connection
-        $connection->close();
+        $conn->close();
 
         return $list;
     }
