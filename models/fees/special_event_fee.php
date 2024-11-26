@@ -1,60 +1,32 @@
 <?php
 
-require_once __DIR__ . '/../../functions/mysql_connection.php';
+require_once __DIR__ . '/fee.php';
 
 final class SpecialEventFee extends Fee {
-    private static $select_all = 'SELECT 
-            numero, 
-            descripcion 
-        FROM tipos_uniformes';
-
     // attributes
-    private $number;
-    private $concept;
-    private $cost;
+    private $scheduled_date;
 
     // getters
-    public function get_number() : int {
-        return $this->number;
+    public function get_scheduled_date() : string {
+        return $this->scheduled_date;
     }
 
-    public function get_concept() : string {
-        return $this->concept;
-    }
+    public function to_array(): array {
+        $array = parent::to_array();
+        $array['scheduled_date'] = $this->scheduled_date;
 
-    public function get_cost() : float {
-        return $this->cost;
+        return $array;
     }
 
     // constructor
-    public function __construct(int $number, string $concept, float $cost) {
-        $this->number = $number;
-        $this->concept = $concept;
-        $this->cost = $cost;
-    }
-
-    public static function get_all() : array {
-        // create empty array
-        $list = [];
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select_all);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result($id, $name);
-
-        // read result
-        while ($stmt->fetch()) {
-            array_push($list, new UniformType($id, $name));
-        }
-
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
-
-        return $list;
+    public function __construct(
+        int $number,
+        SchoolYear $school_year,
+        string $concept,
+        string $scheduled_date,
+        float $cost
+    ) {
+        $this->scheduled_date = $scheduled_date;
+        parent::__construct($number, $school_year, $concept, $cost);
     }
 }

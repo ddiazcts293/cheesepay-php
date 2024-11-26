@@ -2,8 +2,15 @@
 
 require_once __DIR__ . '/../functions/mysql_connection.php';
 
-class Gender {
-    private static $select_all = 'SELECT codigo, descripcion FROM generos';
+final class Gender extends BaseObject {
+    private static $select = 
+        'SELECT codigo AS code, descripcion AS description 
+         FROM generos
+         WHERE codigo = ?';
+   
+    private static $select_all = 
+        'SELECT codigo AS code, descripcion AS description 
+         FROM generos';
 
     // attributes
     private $code;
@@ -18,34 +25,67 @@ class Gender {
         return $this->description;
     }
 
+    public function to_array(): array {
+        return [
+            'code' => $this->code,
+            'description'=> $this->description,
+        ];
+    }
+
     // constructor
     public function __construct(string $code, string $description) {
         $this->code = $code;
         $this->description = $description;
     }
 
-    public static function get_all() : array {
-        // create empty array
-        $list = [];
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select_all);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result($id, $name);
+    /**
+     * Obtiene todos los géneros registrados.
+     * @param string $code Código del género. Si se omite, devuelve todos los 
+     * géneros presentes.
+     * @param MySqlConnection|null $conn Conexión previamente iniciada
+     * @return MySqlException|array
+     */
+    public static function get(
+        string $code = null,
+        MySqlConnection $conn = null
+    ) : MySqlException|array {
+        // declara una variable para almacenar el resultado
+        $result = [];
 
-        // read result
-        while ($stmt->fetch()) {
-            array_push($list, new Gender($id, $name));
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
         }
 
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
+        $resultset = null;
+        if ($code !== null) {
+            $param_list = new MySqlParamList();
+            $param_list->add('s', $code);
 
-        return $list;
+            // realiza la consulta para un solo género
+            $resultset = $conn->query(self::$select, $param_list);
+        } else {
+            // realiza la consulta
+            $resultset = $conn->query(self::$select_all);
+        }
+
+        // verifica si se obtuvo un arreglo
+        if (is_array($resultset)) {
+            // procesa los registros
+            foreach ($resultset as $row) {
+                // agrega el registro al arreglo
+                $result[] = new Gender(
+                    $row['code'],
+                    $row['description']
+                );
+            }
+        }
+        // de lo contrario, se asume que la operación devolvió un error
+        else {
+            $result = $resultset;
+        }
+
+        return $result;
     }
 }

@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/../functions/base_object.php';
 
-final class FoundStudent implements BaseObject {
+final class FoundStudent extends BaseObject {
     private $student_id;
     private $full_name;
     private $curp;
@@ -22,7 +22,7 @@ final class FoundStudent implements BaseObject {
         return $this->curp;
     }
 
-    public function get_status() : string {
+    public function get_enrollment_status() : string {
         return $this->status;
     }
 
@@ -34,8 +34,8 @@ final class FoundStudent implements BaseObject {
         return $this->group;
     }
 
-    public function to_json_string(): string {
-        $data = [
+    public function to_array(): array {
+        return [
             'student_id' => $this->student_id,
             'full_name' => $this->full_name,
             'curp' => $this->curp,
@@ -43,8 +43,6 @@ final class FoundStudent implements BaseObject {
             'education_level' => $this->education_level,
             'group' => $this->group
         ];
-
-        return json_encode($data);
     }
 
     // constructor

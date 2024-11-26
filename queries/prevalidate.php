@@ -1,8 +1,7 @@
 <?php
 
-require __DIR__ . '/query_response.php';
+require __DIR__ . '/../functions/query_response.php';
 require __DIR__ . '/../functions/mysql_connection.php';
-require __DIR__ . '/../functions/helpers.php';
 require __DIR__ . '/../dtos/found_student.php';
 
 class PrevalidationResponse extends QueryResponse {
@@ -12,16 +11,16 @@ class PrevalidationResponse extends QueryResponse {
         return $this->is_registered;
     }
     
-    public function to_json_string() : string {
-        $json = [];
-        $json['status'] = $this->get_status();
-        $json['is_registered'] = $this->is_registered();
+    public function to_array(): array {
+        $array = [];
+        $array['status'] = $this->get_status();
+        $array['is_registered'] = $this->is_registered();
         
         if ($this->get_data() instanceof FoundStudent) {
-            $json['student'] = json_decode($this->get_data()->to_json_string());
+            $array['student'] = $this->get_data()->to_array();
         }
         
-        return json_encode($json);
+        return $array;
     }
     
     public function __construct(bool $is_registered, $data) {
@@ -36,10 +35,10 @@ header('Content-Type: text/json');
 // declara una variable para almacenar la respuesta
 $response = null;
 
-// verifica que el método de la petición sea GET
-if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['curp'])) {
+// verifica si el método de la petición es GET
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['curp'])) {
     // limpia la cadena que contiene el CURP recibido
-    $curp = satinize($_GET['curp']);
+    $curp = sanitize($_GET['curp']);
     // abre una nueva conexión con la base de datos
     $conn = MySqlConnection::open_connection();
     // prepara la sentencia a ejecutar
@@ -66,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['curp'])) {
             );
 
             // avanza al siguiente resultado, lo cual no es necesario, pero
-            // falla si no se pone
+            // falla si no se hace
             $stmt->next_result();
             // libera los recursos asociados al resultado obtenido
             $result->free();
@@ -80,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['curp'])) {
     } else {
         // crea un objeto de respuesta en caso de producirse un error durante la
         // conslta
-        $response = QueryResponse::create_error('Error during query');
+        $response = QueryResponse::error('Error during query');
     }
 
     // libera los recursos y cierra la conexión
@@ -88,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['curp'])) {
     $conn->close();
 } else {
     // crea un objeto de respuesta en caso de recibirse una petición erronea
-    $response = QueryResponse::create_error('Malformed request');
+    $response = QueryResponse::malformed_request();
 }
 
 // despliega el objeto de respuesta en formato JSON

@@ -1,21 +1,31 @@
 <?php
 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/functions/mysql_connection.php';
+require_once __DIR__ . '/../../functions/mysql_connection.php';
+require_once __DIR__ . '/../school_year.php';
 
-class Fee {
-    private static $select_all = 'SELECT 
-            numero, 
-            descripcion 
-        FROM tipos_uniformes';
+class Fee extends BaseObject {
+    private static $select = 
+        'SELECT 
+            cuota AS fee, 
+            ciclo AS school_year,
+            concepto AS concept, 
+            costo AS cost
+         FROM vw_resumenes_cuotas
+         WHERE cuota = ?';
 
     // attributes
-    private $number;
-    private $concept;
-    private $cost;
+    protected $number;
+    protected $school_year;
+    protected $concept;
+    protected $cost;
 
     // getters
     public function get_number() : int {
         return $this->number;
+    }
+
+    public function get_school_year() : SchoolYear {
+        return $this->school_year;
     }
 
     public function get_concept() : string {
@@ -26,35 +36,77 @@ class Fee {
         return $this->cost;
     }
 
-    // constructor
-    public function __construct(int $number, string $concept, float $cost) {
+    public function to_array(): array {
+        return [
+            'number' => $this->number,
+            'school_year'=> $this->school_year->to_array(),
+            'concept' => $this->concept,
+            'cost' => $this->cost
+        ];
+    }
+
+    public function __construct(
+        int $number,
+        SchoolYear $school_year,
+        string $concept,
+        float $cost
+    ) {
         $this->number = $number;
+        $this->school_year = $school_year;
         $this->concept = $concept;
         $this->cost = $cost;
     }
 
-    public static function get_all() : array {
-        // create empty array
-        $list = [];
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select_all);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result($id, $name);
+    /**
+     * Obtiene un resumen de la cuota asociada al número dado.
+     * @param int $fee_number Número de la cuota
+     * @param MySqlConnection|null $conn Conexión previamente iniciada
+     * @return Fee|MySqlException|null
+     */
+    public static function get(
+        int $fee_number, 
+        MySqlConnection $conn = null
+    ) : Fee|MySqlException|null {
+        // declara una variable para almacenar el resultado
+        $result = null;
 
-        // read result
-        while ($stmt->fetch()) {
-            array_push($list, new UniformType($id, $name));
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
         }
 
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
+        // crea una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('i', $fee_number);
 
-        return $list;
+        // resaliza la consulta
+        $resultset = $conn->query(self::$select, $param_list);
+
+        // verifica si se obtuvo un arreglo
+        if (is_array($resultset)) {
+            // verifica si el arreglo contiene un elemento
+            if (count($resultset) == 1) {
+                // procesa el resultado obtenido
+                $row = $resultset[0];
+                // obtiene el ciclo escolar asociado
+                $school_year_code = $row['school_year'];
+                $year = SchoolYear::get($school_year_code, $conn);
+
+                // agrega el registro al arreglo
+                $result = new Fee(
+                    $row['fee'], 
+                    $year,
+                    $row['concept'],
+                    $row['cost']
+                );
+            }
+        }
+        // de lo contrario, se asume que la operación devolvió un error
+        else {
+            $result = $resultset;
+        }
+        
+        return $result;
     }
 }

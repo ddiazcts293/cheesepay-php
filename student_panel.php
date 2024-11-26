@@ -1,7 +1,6 @@
 <!DOCTYPE html>
     <?php
         require __DIR__ . '/models/student.php';
-        require __DIR__ . '/functions/helpers.php';
 
         // declara una variable para almacenar el objeto alumno
         $student = null;
@@ -9,9 +8,9 @@
         $is_search_requested = false;
 
         // verifica si se parámetro de la matricula del alumno está definido
-        if (isset($_GET['student_id'])) {
+        if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['student_id'])) {
             // obtiene y limpia la matricula
-            $student_id = satinize($_GET['student_id']);
+            $student_id = sanitize($_GET['student_id']);
             // consulta la información relacionada con la matricula
             $student = Student::get($student_id);
             // establece el indicador de búsqueda solicitada en verdadero
@@ -46,14 +45,14 @@
             <?php if ($student !== null) {; ?>
                 <?php
                     $full_name = $student->get_full_name();
-                    $is_inactive = ($student->get_deregistration_date()) !== null;
+                    $is_inactive = ($student->get_withdrawal_date()) !== null;
                     $group = $student->get_current_group();
                 ?>
                 <?php if ($is_inactive) {; ?>
                     <div class="alert alert-info">
                         <span>
                             <strong>Información:</strong> El alumno se encuentra dado de baja desde 
-                            <?php echo $student->get_deregistration_date(); ?>.
+                            <?php echo $student->get_withdrawal_date(); ?>.
                         </span>
                     </div>
                 <?php }; ?>
@@ -64,6 +63,10 @@
                     </span>
                 </div>
                 <!--Sección de datos personales-->
+                <div class="control-row">
+                    <a href="payment_panel.php?student_id=<?php echo $student_id; ?>">Registrar pago</button>
+                    <a href="#">Dar de baja</a>
+                </div>
                 <div class="card">
                     <div class="card-header">
                         <h2>Información general</h2>
@@ -73,10 +76,10 @@
                         <p>Nombre: <?php echo $full_name; ?></p>
                         <p>Nivel educativo: <?php echo $group->get_education_level()->get_description(); ?> </p>
                         <p>Grupo: <?php echo "{$group->get_grade()}-{$group->get_letter()}"; ?></p>
-                        <p>Estado: <?php echo $student->get_status()->get_description(); ?> </p>
-                        <p>Fecha de alta: <?php echo $student->get_registration_date(); ?> </p>
+                        <p>Estado: <?php echo $student->get_enrollment_status()->get_description(); ?> </p>
+                        <p>Fecha de alta: <?php echo $student->get_enrollment_date(); ?> </p>
                         <?php if ($is_inactive) {; ?>
-                            <p>Fecha de baja: <?php echo $student->get_deregistration_date(); ?></p>
+                            <p>Fecha de baja: <?php echo $student->get_withdrawal_date(); ?></p>
                         <?php }; ?>
                     </div>
                 </div>
@@ -254,10 +257,8 @@
                     <div class="card-body">
                         <div class="control-row">
                             <div class="control control-col width-12">
-                                <form id="search-form" onsubmit="event.preventDefault()">
-                                    <label for="search-term">Término de búsqueda</label>
-                                    <input type="text" id="search-term" name="q" maxlength="32" minlength="2" required onkeyup="search(this.value)">
-                                </form>
+                                <label for="search-term">Término de búsqueda</label>
+                                <input type="text" id="search-term" maxlength="32" onkeyup="searchStudents(this.value)">    
                             </div>
                         </div>
                         <div class="control-row" id="search-results">

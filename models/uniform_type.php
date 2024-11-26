@@ -2,10 +2,12 @@
 
 require_once __DIR__ . '/../functions/mysql_connection.php';
 
-final class Relationship extends BaseObject {
+final class UniformType extends BaseObject {
     private static $select_all = 
-        'SELECT numero AS number, descripcion AS description
-         FROM parentescos';
+        'SELECT 
+            numero AS number, 
+            descripcion AS description
+        FROM tipos_uniformes';
 
     // attributes
     private $number;
@@ -22,8 +24,8 @@ final class Relationship extends BaseObject {
 
     public function to_array(): array {
         return [
-            'number'=> $this->number,
-            'description'=> $this->description
+            'number' => $this->number,
+            'description' => $this->description
         ];
     }
 
@@ -34,14 +36,14 @@ final class Relationship extends BaseObject {
     }
 
     /**
-     * Obtiene todos los parentescos registrados.
+     * Obtiene un arreglo de todos los tipos de uniformes registrados
      * @param MySqlConnection|null $conn Conexión previamente iniciada
      * @return array|MySqlException
      */
     public static function get_all(
         MySqlConnection $conn = null
-    ) : MySqlException|array {
-        // declara una variable para almacenar el resultado
+    ) : array|MySqlException {
+        // crea un arreglo vacío
         $result = [];
 
         // verifica si se recibió una conexión previamente iniciada
@@ -58,8 +60,8 @@ final class Relationship extends BaseObject {
             // procesa los registros
             foreach ($resultset as $row) {
                 // agrega el registro al arreglo
-                $result[] = new Relationship(
-                    $row['number'],
+                $result[] = new UniformType(
+                    $row['number'], 
                     $row['description']
                 );
             }

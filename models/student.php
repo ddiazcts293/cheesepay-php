@@ -32,51 +32,44 @@ final class Student extends Person {
         WHERE a.matricula = ?';
 
     private static $select_tutors = 'SELECT
-            t.numero,
-            t.nombre_de_pila,
-            t.apellido_paterno,
-            t.apellido_materno,
-            t.rfc,
-            t.email,
-            t.telefono,
-            t.ocupacion,
-            p.numero,
-            p.descripcion
-        FROM tutor_alumnos AS ta
-        INNER JOIN tutores AS t ON ta.tutor = t.numero
-        INNER JOIN parentescos AS p ON ta.parentesco_tutor = p.numero
-        WHERE ta.alumno = ?';
+            tutor AS number,
+            parentesco AS relationship,
+            nombre_de_pila AS name,
+            apellido_paterno AS first_surname,
+            apellido_materno AS last_surname,
+            rfc,
+            email,
+            telefono AS phone_number
+        FROM vw_tutores_alumnos
+        WHERE alumno = ?';
 
-    private static $select_groups = 'SELECT
-            g.numero,
-            g.grado,
-            g.letra,
-            ce.codigo,
-            ce.fecha_inicio,
-            ce.fecha_fin,
-            ne.codigo,
-            ne.descripcion,
-            ne.edad_minima,
-            ne.edad_maxima,
-            ne.cantidad_grados
-        FROM grupos AS g
-        INNER JOIN grupo_alumnos AS ga ON g.numero = ga.grupo
-        INNER JOIN ciclos_escolares AS ce ON g.ciclo = ce.codigo
-        INNER JOIN niveles_educativos AS ne ON g.nivel_educativo = ne.codigo
-        WHERE ga.alumno = ?
-        ORDER BY g.numero DESC';
+    private static $select_groups = 
+        'SELECT
+            grupo AS number,
+            grado AS grade,
+            letra AS letter,
+            ciclo AS school_year,
+            nivel_educativo AS education_level
+         FROM vw_grupo_alumnos
+         WHERE alumno = ?';
 
-    private static $update_address = 'UPDATE alumnos SET 
+    private static $insert = 
+        'CALL sp_registrar_alumno(?,?,?,?,?,?,?,?,?,?,?, @student_id)';
+    
+    private static $update_address = 
+        'UPDATE alumnos SET 
             direccion_calle = ?,
             direccion_numero = ?,
             direccion_colonia = ?,
             direccion_cp = ?
-        WHERE matricula = ?';
+         WHERE matricula = ?';
     
-    private static $update_ssn = 'UPDATE alumnos 
-        SET nss = ?
-        WHERE matricula = ?';
+    private static $update_ssn = 
+        'UPDATE alumnos 
+         SET nss = ?
+         WHERE matricula = ?';
 
+    // attributes
     private $student_id;
     private $gender;
     private $curp;
@@ -86,15 +79,16 @@ final class Student extends Person {
     private $address_number;
     private $address_district;
     private $address_zip;
-    private $registration_date;
-    private $deregistration_date;
-    private $status;
+    private $enrollment_date;
+    private $withdrawal_date;
+    private $enrollment_status;
 
+    // getters
     public function get_student_id() : string {
         return $this->student_id;
     }
 
-    public function get_gender() : Gender {
+    public function get_gender() : Gender|null {
         return $this->gender;
     }
 
@@ -126,17 +120,44 @@ final class Student extends Person {
         return $this->address_zip;
     }
 
-    public function get_registration_date() : string {
-        return $this->registration_date;
+    public function get_enrollment_date() : string {
+        return $this->enrollment_date;
     }
 
-    public function get_deregistration_date() : string|null {
-        return $this->deregistration_date;
+    public function get_withdrawal_date() : string|null {
+        return $this->withdrawal_date;
     }
 
-    public function get_status() : EnrollmentStatus {
-        return $this->status;
+    public function get_enrollment_status() : EnrollmentStatus|null {
+        return $this->enrollment_status;
     }
+
+    // setters
+    public function set_ssn(string $ssn) : void {
+        $this->ssn = $ssn;
+    }
+
+    public function set_address_street(string $address_street) : void {
+        $this->address_street = $address_street;
+    }
+
+    public function set_address_number(string $address_number) : void {
+        $this->address_number = $address_number;
+    }
+
+    public function set_address_district(string $address_district) : void {
+        $this->address_district = $address_district;
+    }
+
+    public function set_address_zip(string $address_zip) : void {
+        $this->address_zip = $address_zip;
+    }
+
+    public function set_enrollment_status(EnrollmentStatus $enrollment_status) : void {
+        $this->enrollment_status = $enrollment_status;
+    }
+
+    /* Lógica de negocio */
 
     public function get_tutors(): array {
         // declare variable to store the retrieved objects
@@ -154,7 +175,7 @@ final class Student extends Person {
             $tutor_number,
             $tutor_name,
             $tutor_first_surname,
-            $tutor_last_surname,
+            $tutor_second_surname,
             $rfc,
             $email,
             $phone_number,
@@ -171,11 +192,10 @@ final class Student extends Person {
                     $tutor_number,
                     $tutor_name,
                     $tutor_first_surname,
-                    $tutor_last_surname,
+                    $tutor_second_surname,
                     $rfc,
                     $email,
                     $phone_number,
-                    $profession,
                     new Relationship(
                         $relationship_number, 
                         $relationship_description
@@ -289,7 +309,7 @@ final class Student extends Person {
         // close connection
         $conn->close();
 
-        // checks if the update was successful
+        // check if the update was successful
         if ($success) {
             // update object attributes
             $this->street = $street;
@@ -328,30 +348,70 @@ final class Student extends Person {
         return $success;
     }
 
+    public function to_array(): array {
+        return [
+            'student_id' => $this->student_id,
+            'gender' => $this->gender?->to_array(),
+            'curp' => $this->curp,
+            'ssn' => $this->ssn,
+            'birth_date' => $this->birth_date,
+            'address_street' => $this->address_street,
+            'address_number' => $this->address_number,
+            'address_district' => $this->address_district,
+            'address_zip' => $this->address_zip,
+            'enrollment_date' => $this->enrollment_date,
+            'withdrawal_date' => $this->withdrawal_date,
+            'enrollment_status' => $this->enrollment_status?->to_array(),
+        ];
+    }
+
     // constructor
     public function __construct() {
         $num_args = func_num_args();
-        
-        if ($num_args >= 1) {
-            $this->student_id = func_get_arg(0);
-        }
+        $this->student_id = ($num_args >= 1) ? func_get_arg(0) : '';
+
         if ($num_args >= 4) {
             $this->name = func_get_arg(1);
             $this->first_surname = func_get_arg(2);
-            $this->last_surname = func_get_arg(3);
+            $this->second_surname = func_get_arg(3);
+        } else {
+            $this->name = '';
+            $this->first_surname = '';
+            $this->second_surname = null;
         }
-        if ($num_args == 15) {
+
+        if ($num_args >= 8) {
             $this->gender = func_get_arg(4);
             $this->curp = func_get_arg(5);
             $this->ssn = func_get_arg(6);
             $this->birth_date = func_get_arg(7);
+        } else {
+            $this->gender = null;
+            $this->curp = '';
+            $this->ssn = null;
+            $this->birth_date = '';
+        }
+
+        if ($num_args >= 12) {
             $this->address_street = func_get_arg(8);
             $this->address_number = func_get_arg(9);
             $this->address_district = func_get_arg(10);
             $this->address_zip = func_get_arg(11);
-            $this->registration_date = func_get_arg(12);
-            $this->deregistration_date = func_get_arg(13);
-            $this->status = func_get_arg(14);
+        } else {
+            $this->address_street = '';
+            $this->address_number = '';
+            $this->address_district = '';
+            $this->address_zip = '';
+        }
+
+        if ($num_args == 15) {
+            $this->enrollment_date = func_get_arg(12);
+            $this->withdrawal_date = func_get_arg(13);
+            $this->enrollment_status = func_get_arg(14);
+        } else {
+            $this->enrollment_date = '';
+            $this->withdrawal_date = null;
+            $this->enrollment_status = null;
         }
     }
 
@@ -371,7 +431,7 @@ final class Student extends Person {
             $student_id,
             $name,
             $first_surname,
-            $last_surname,
+            $second_surname,
             $gender_code,
             $gender_description,
             $curp,
@@ -381,8 +441,8 @@ final class Student extends Person {
             $address_number,
             $address_district,
             $address_zip,
-            $registration_date,
-            $deregistration_date,
+            $enrollment_date,
+            $withdrawal_date,
             $status_number,
             $status_description
         );
@@ -393,7 +453,7 @@ final class Student extends Person {
                 $student_id,
                 $name,
                 $first_surname,
-                $last_surname,
+                $second_surname,
                 new Gender($gender_code, $gender_description),
                 $curp,
                 $ssn,
@@ -402,8 +462,8 @@ final class Student extends Person {
                 $address_number,
                 $address_district,
                 $address_zip,
-                $registration_date,
-                $deregistration_date,
+                $enrollment_date,
+                $withdrawal_date,
                 new EnrollmentStatus($status_number, $status_description)
             );
         }
@@ -414,5 +474,68 @@ final class Student extends Person {
         $conn->close();
 
         return $student;
+    }
+
+    public static function register(
+        string $name,
+        string $first_surname,
+        string $second_surname,
+        string $gender,
+        string $curp,
+        string $ssn,
+        string $birth_date,
+        string $address_street,
+        string $address_number,
+        string $address_district,
+        string $address_zip,
+        MySqlConnection $conn = null
+    ) : MySqlException|Student {
+        //declara una variable para almacenar la matrícula
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
+        }
+
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $name);
+        $param_list->add('s', $first_surname);
+        $param_list->add('s', $second_surname);
+        $param_list->add('s', $gender);
+        $param_list->add('s', $curp);
+        $param_list->add('s', $ssn);
+        $param_list->add('s', $birth_date);
+        $param_list->add('s', $address_street);
+        $param_list->add('s', $address_number);
+        $param_list->add('s', $address_district);
+        $param_list->add('s', $address_zip);
+
+        // realiza la llamada al procedimiento
+        $resultset = $conn->query(self::$insert, $param_list);
+        // verifica si se produjo una excepción al insertar
+        if ($resultset instanceof MySqlException) {
+            return $resultset;
+        }
+
+        // consulta el valor de la matrícula dado por el parámetro de salida
+        $resultset = $conn->query('SELECT @student_id');
+        $student_id = $resultset[0]['@student_id'];
+        // obtiene el genero del alumno
+        $gender = Gender::get($gender, $conn);
+
+        return new Student(
+            $student_id,
+            $name,
+            $first_surname,
+            $second_surname,
+            $gender,
+            $curp,
+            $ssn,
+            $birth_date,
+            $address_street,
+            $address_number,
+            $address_district,
+            $address_zip
+        );
     }
 }

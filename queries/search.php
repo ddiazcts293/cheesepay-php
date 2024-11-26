@@ -1,51 +1,66 @@
 <?php
 
+/*
+    Descripción: realiza la búsqueda de registros
+    Devuelve: arreglo de registros encontrados
+
+    Parámetros:
+    - type: tipo de búsqueda (student, tutor)
+    - q: consulta
+*/
+
+require __DIR__ . '/../functions/mysql_connection.php';
+require __DIR__ . '/../functions/query_response.php';
 require __DIR__ . '/../dtos/found_student.php';
 require __DIR__ . '/../dtos/found_tutor.php';
-require __DIR__ . '/query_response.php';
-require __DIR__ . '/../functions/mysql_connection.php';
-require __DIR__ . '/../functions/helpers.php';
 
 // establece el tipo de respuesta como archivo JSON
 header('Content-Type: text/json');
 // declara una variable para almacenar la respuesta
 $response = null;
 
-// verifica que el método de la petición sea GET y si los parámetros de tipo y
-// término de búsqueda están definidos y si no son  nulos
-if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['type'], $_GET['q'])) {
-    // obtiene el tipo de búsqueda
-    $type = $_GET['type'];
-    // verifica si el tipo de búsqueda corresponde a alumno o tutor
-    if ($type === 'student' || $type === 'tutor') {
-        // obtiene y limpia la cadena que contiene el término de búsqueda
-        $term = satinize($_GET['q']);
-        // declara una variable para almacenar la lista de elementos encontrados
-        $results = null;
-    
-        switch ($_GET['type']) {
-            case 'student':
-                $results = search_students($term);
-                break;
-            case 'tutor':
-                $results = search_tutors($term);
-                break;
-            default:
-                break;
+// verifica que el método de la petición sea GET 
+if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+    // verifica si los parámetros de tipo y consulta están definidos
+    if (isset($_GET['type'], $_GET['q'])) {
+        // obtiene y limpia los parámetros recibidos
+        $type = $_GET['type'];
+        $term = sanitize($_GET['q']);
+
+        // verifica si el tipo de búsqueda corresponde a alumno o tutor
+        if ($type === 'student' || $type === 'tutor') {
+            // declara una variable para almacenar la lista de elementos encontrados
+            $results = null;
+        
+            // realiza la selección del tipo de búsqueda
+            switch ($type) {
+                case 'student':
+                    $results = search_students($term);
+                    break;
+                case 'tutor':
+                    $results = search_tutors($term);
+                    break;
+                default:
+                    break;
+            }
+        
+            // crea un objeto de respuesta según sea el caso
+            $response = $results !== null ? 
+                new QueryResponse(QueryResponse::OK, $results) :
+                QueryResponse::error('Error during query');
+        } else {
+            // crea un objeto de respuesta en caso de especificar un tipo de 
+            // búsqueda no reconocida
+            $response = QueryResponse::error('Invalid specified type');
         }
-    
-        // crea un objeto de respuesta según sea el caso
-        $response = $results !== null ? 
-            new QueryResponse(QueryResponse::OK, $results) :
-            QueryResponse::create_error('Error during query');
     } else {
-        // crea un objeto de respuesta en caso de recibirse un tipo de búsqueda
-        // no válido
-        $response = QueryResponse::create_error('Invalid specified type');
+        // crea un objeto de respuesta en caso de recibirse una petición sin el
+        // formato requerido
+        $response = QueryResponse::malformed_request();
     }
 } else {
-    // crea un objeto de respuesta en caso de recibirse una petición erronea
-    $response = QueryResponse::create_error('Malformed request');
+    // crea un objeto de respuesta para solicitudes con otro método
+    $response = QueryResponse::invalid_method();
 }
 
 // despliega el objeto de respuesta en formato JSON
@@ -135,9 +150,7 @@ function search_tutors(string $term): array {
                         new FoundTutor(
                             $row['numero'],
                             $row['nombre_completo'],
-                            $row['rfc'],
-                            $row['email'],
-                            $row['telefono']
+                            $row['rfc']
                         )
                     );
                 }

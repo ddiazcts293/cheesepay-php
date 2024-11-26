@@ -1,19 +1,30 @@
 <?php
 
 require_once __DIR__ . '/../functions/mysql_connection.php';
-require_once __DIR__ . '/../functions/base_object.php';
 require_once __DIR__ . '/school_year.php';
 require_once __DIR__ . '/education_level.php';
 
-final class Group implements BaseObject {
+final class Group extends BaseObject {
     private static $select = 
-        'SELECT  
-         FROM groupos 
-         WHERE numero = ?';
+        'SELECT
+            grupo AS number,
+            grado AS grade,
+            letra AS letter,
+            nivel_educativo AS education_level,
+            ciclo AS school_year,
+            cantidad_alumnos AS student_count 
+         FROM vw_grupos
+         WHERE grupo = ?';
 
     private static $select_all = 
-        'SELECT codigo, descripcion, edad_minima, edad_maxima, cantidad_grados 
-         FROM niveles_educativos';
+        'SELECT
+            grupo AS number,
+            grado AS grade,
+            letra AS letter,
+            nivel_educativo AS education_level,
+            ciclo AS school_year,
+            cantidad_alumnos AS student_count 
+         FROM vw_grupos';
 
     // attributes
     private $number;
@@ -21,6 +32,7 @@ final class Group implements BaseObject {
     private $letter;
     private $school_year;
     private $education_level;
+    private $student_count;
 
     // getters
     public function get_number() : string {
@@ -43,16 +55,23 @@ final class Group implements BaseObject {
         return $this->education_level;
     }
 
-    public function to_json_string() : string {
-        $data = [
+    public function get_student_count() : int {
+        return $this->student_count;
+    }
+
+    public function to_array() : array {
+        return [
             'number' => $this->number,
             'grade'=> $this->grade,
             'letter' => $this->letter,
-            'school_year'=> $this->school_year,
-            'education_level'=> $this->education_level
+            'school_year'=> $this->school_year->to_array(),
+            'education_level'=> $this->education_level->to_array(),
+            'student_count' => $this->student_count
         ];
+    }
 
-        return json_encode($data);
+    public function __tostring() : string {
+        return "{$this->grade}-{$this->letter}";
     }
 
     // constructor
@@ -61,87 +80,69 @@ final class Group implements BaseObject {
         int $grade,
         string $letter,
         SchoolYear $school_year,
-        EducationLevel $education_level
+        EducationLevel $education_level,
+        int $student_count = 0
     ) {
         $this->number = $number;
         $this->grade = $grade;
         $this->letter = $letter;
         $this->school_year = $school_year;
         $this->education_level = $education_level;
+        $this->student_count = $student_count;
     }
 
-    public static function get(string $code): EducationLevel|null {
-        // declare variable to store the retrieved object
-        $level = null;
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select);
-        // bind param
-        $stmt->bind_param('s', $code);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result(
-            $code, 
-            $description, 
-            $minimum_age, 
-            $maximum_age,
-            $grade_count
-        );
+    /**
+     * Obtiene el grupo asociado al número dado.
+     * @param string $group_number Número del grupo
+     * @param MySqlConnection|null $conn Conexión previamente iniciada
+     * @return Group|MySqlException|null
+     */
+    public static function get(
+        string $group_number,
+        MySqlConnection $conn = null
+    ) : Group|MySqlException|null {
+        // declara una variable para almacenar el resultado
+        $result = null;
 
-        // read result
-        if ($stmt->fetch()) {
-            $level = new EducationLevel(
-                $code, $description, $minimum_age, $maximum_age, $grade_count
-            );
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
         }
 
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
+        // crea una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('i', $group_number);
 
-        return $level;
-    }
+        // realiza la consulta para un solo nivel educativo
+        $resultset = $conn->query(self::$select, $param_list);
+    
+        // verifica si se obtuvo un arreglo
+        if (is_array($resultset)) {
+            // verifica si el arreglo contiene un registro
+            if (count($resultset) == 1) {
+                // procesa el resultado obtenido
+                $row = $resultset[0];
+                // obtiene el nivel educativo y ciclo escolar asociados
+                $level = EducationLevel::get($row['education_level'], $conn);
+                $year = SchoolYear::get($row['school_year'], $conn);
 
-    public static function get_all() : array {
-        // create empty array
-        $list = [];
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select_all);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result(
-            $code, 
-            $name, 
-            $minimum_age, 
-            $maximum_age,
-            $grade_count
-        );
-
-        // read result
-        while ($stmt->fetch()) {
-            array_push(
-                $list, 
-                new EducationLevel(
-                    $code, 
-                    $name, 
-                    $minimum_age, 
-                    $maximum_age,
-                    $grade_count
-                )
-            );
+                // agrega el registro al arreglo
+                $result = new Group(
+                    $row['number'],
+                    $row['grade'],
+                    $row['letter'],
+                    $year,
+                    $level,
+                    $row['student_count']
+                );
+            }
+        }
+        // de lo contrario, se asume que la operación devolvió un error
+        else {
+            $result = $resultset;
         }
 
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
-
-        return $list;
+        return $result;
     }
 }

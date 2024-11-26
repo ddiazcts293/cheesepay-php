@@ -13,13 +13,13 @@ function initDialogs() {
     }
 }
 
-function showModal(modalElementId) {
+function showDialog(modalElementId) {
     let modal = document.getElementById(modalElementId);
     modal.showModal();
 }
 
 
-function hideModal(modalElementId) {
+function hideDialog(modalElementId) {
     let modal = document.getElementById(modalElementId);
     modal.close();
 }

@@ -1,16 +1,25 @@
 <?php
 
 require_once __DIR__ . '/../functions/mysql_connection.php';
-require_once __DIR__ . '/../functions/base_object.php';
 
-final class EducationLevel implements BaseObject {
+final class EducationLevel extends BaseObject {
     private static $select = 
-        'SELECT codigo, descripcion, edad_minima, edad_maxima, cantidad_grados 
-         FROM niveles_educativos 
+        'SELECT 
+            codigo AS code,
+            descripcion AS description, 
+            edad_minima AS minimum_age, 
+            edad_maxima AS maximum_age, 
+            cantidad_grados AS grade_count
+         FROM niveles_educativos
          WHERE codigo = ?';
 
     private static $select_all = 
-        'SELECT codigo, descripcion, edad_minima, edad_maxima, cantidad_grados 
+        'SELECT
+            codigo AS code,
+            descripcion AS description, 
+            edad_minima AS minimum_age, 
+            edad_maxima AS maximum_age, 
+            cantidad_grados AS grade_count
          FROM niveles_educativos';
 
     // attributes
@@ -41,16 +50,18 @@ final class EducationLevel implements BaseObject {
         return $this->grade_count;
     }
 
-    public function to_json_string() : string {
-        $json = [
+    public function to_array(): array {
+        return [
             'code' => $this->code,
             'description'=> $this->description,
             'minimum_age' => $this->minimum_age,
             'maximum_age'=> $this->maximum_age,
             'grade_count'=> $this->grade_count
         ];
+    }
 
-        return json_encode($json);
+    public function __tostring() : string {
+        return $this->description;
     }
 
     // constructor
@@ -68,78 +79,73 @@ final class EducationLevel implements BaseObject {
         $this->grade_count = $grade_count;
     }
 
-    public static function get(string $code): EducationLevel|null {
-        // declare variable to store the retrieved object
-        $level = null;
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select);
-        // bind param
-        $stmt->bind_param('s', $code);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result(
-            $code, 
-            $description, 
-            $minimum_age, 
-            $maximum_age,
-            $grade_count
-        );
+    /**
+     * Obtiene el nivel educativo asociado al código dado.
+     * @param string|null $code Código del nivel educativo. Si es nulo, devuelve 
+     * todos los niveles educativos registrados.
+     * @param MySqlConnection|null $conn Conexión previamente iniciada
+     * @return EducationLevel|MySqlException|null|array
+     */
+    public static function get(
+        string|null $education_level_code,
+        MySqlConnection $conn = null
+    ) : EducationLevel|MySqlException|array|null {
+        // declara una variable para almacenar el resultado
+        $result = [];
 
-        // read result
-        if ($stmt->fetch()) {
-            $level = new EducationLevel(
-                $code, $description, $minimum_age, $maximum_age, $grade_count
-            );
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
         }
 
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
+        $resultset = null;
+        if ($education_level_code === null) {
+            // realiza la consulta para todos los niveles educativos
+            $resultset = $conn->query(self::$select_all);
+        } else {
+            // crea una lista de parámetros
+            $param_list = new MySqlParamList();
+            $param_list->add('s', $education_level_code);
 
-        return $level;
+            // realiza la consulta para un solo nivel educativo
+            $resultset = $conn->query(self::$select, $param_list);
+        }
+
+        // verifica si se obtuvo un arreglo
+        if (is_array($resultset)) {
+            // procesa los registros
+            foreach ($resultset as $row) {
+                // agrega el registro al arreglo
+                $result[] = new EducationLevel(
+                    $row['code'],
+                    $row['description'],
+                    $row['minimum_age'],
+                    $row['maximum_age'],
+                    $row['grade_count']
+                );
+            }
+        }
+        // de lo contrario, se asume que la operación devolvió un error
+        else {
+            $result = $resultset;
+        }
+
+        if (is_array($result) && count($result) == 1) {
+            return $result[0];
+        }
+
+        return $result;
     }
 
-    public static function get_all() : array {
-        // create empty array
-        $list = [];
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select_all);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result(
-            $code, 
-            $name, 
-            $minimum_age, 
-            $maximum_age,
-            $grade_count
-        );
-
-        // read result
-        while ($stmt->fetch()) {
-            array_push(
-                $list, 
-                new EducationLevel(
-                    $code, 
-                    $name, 
-                    $minimum_age, 
-                    $maximum_age,
-                    $grade_count
-                )
-            );
-        }
-
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
-
-        return $list;
+    /**
+     * Obtiene todos los niveles educativos registrados.
+     * @param MySqlConnection|null $conn Conexión previamente iniciada
+     * @return EducationLevel|MySqlException|array
+     */
+    public static function get_all(
+        MySqlConnection $conn = null
+    ) : MySqlException|array|null {
+        return self::get(null, $conn);
     }
 }

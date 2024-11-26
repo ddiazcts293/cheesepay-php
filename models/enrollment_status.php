@@ -1,11 +1,15 @@
 <?php
 
 require_once __DIR__ . '/../functions/mysql_connection.php';
-require_once __DIR__ . '/../functions/base_object.php';
 
-final class EnrollmentStatus implements BaseObject {
+final class EnrollmentStatus extends BaseObject {
+    public const ENROLLED = 1;
+    public const GRADUATED = 2;
+    public const WITHDRAWN = 3;
+    public const DISMISSED = 4;
+
     private static $select_all = 
-        'SELECT numero, descripcion 
+        'SELECT numero AS number, descripcion AS description
          FROM estados_inscripcion';
 
     // attributes
@@ -13,7 +17,7 @@ final class EnrollmentStatus implements BaseObject {
     private $description;
 
     // getters
-    public function get_number() : string {
+    public function get_number() : int {
         return $this->number;
     }
 
@@ -21,13 +25,11 @@ final class EnrollmentStatus implements BaseObject {
         return $this->description;
     }
 
-    public function to_json_string() : string {
-        $data = [
+    public function to_array(): array {
+        return [
             'number' => $this->number,
             'description'=> $this->description,
         ];
-
-        return json_encode($data);
     }
 
     // constructor
@@ -39,28 +41,42 @@ final class EnrollmentStatus implements BaseObject {
         $this->description = $description;
     }
 
-    public static function get_all() : array {
-        // create empty array
-        $list = [];
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select_all);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result($number, $description);
+    /**
+     * Obtiene todos los estados de inscripción registrados.
+     * @param MySqlConnection|null $conn Conexión previamente iniciada
+     * @return array|MySqlException
+     */
+    public static function get_all(
+        MySqlConnection $conn = null
+    ) : MySqlException|array {
+        // declara una variable para almacenar el resultado
+        $result = [];
 
-        // read result
-        while ($stmt->fetch()) {
-            array_push($list, new EnrollmentStatus($number, $description));
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
         }
 
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
+        // realiza la consulta
+        $resultset = $conn->query(self::$select_all);
+        
+        // verifica si se obtuvo un arreglo
+        if (is_array($resultset)) {
+            // procesa los registros
+            foreach ($resultset as $row) {
+                // agrega el registro al arreglo
+                $result[] = new EnrollmentStatus(
+                    $row['number'],
+                    $row['description']
+                );
+            }
+        }
+        // de lo contrario, se asume que la operación devolvió un error
+        else {
+            $result = $resultset;
+        }
 
-        return $list;
+        return $result;
     }
 }
