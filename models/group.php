@@ -26,6 +26,9 @@ final class Group extends BaseObject {
             cantidad_alumnos AS student_count 
          FROM vw_grupos';
 
+    private static $insert_gruop_student =
+        'INSERT INTO grupo_alumnos VALUES (?,?)';
+
     // attributes
     private $number;
     private $grade;
@@ -57,6 +60,13 @@ final class Group extends BaseObject {
 
     public function get_student_count() : int {
         return $this->student_count;
+    }
+
+    public function register_student(
+        string $student_id, 
+        MySqlConnection $conn = null
+    ) : void {
+        self::register_student_in_group($this->number, $student_id, $conn);
     }
 
     public function to_array() : array {
@@ -95,12 +105,12 @@ final class Group extends BaseObject {
      * Obtiene el grupo asociado al número dado.
      * @param string $group_number Número del grupo
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return Group|MySqlException|null
+     * @return Group|null
      */
     public static function get(
         string $group_number,
         MySqlConnection $conn = null
-    ) : Group|MySqlException|null {
+    ) : Group|null {
         // declara una variable para almacenar el resultado
         $result = null;
 
@@ -117,32 +127,45 @@ final class Group extends BaseObject {
         // realiza la consulta para un solo nivel educativo
         $resultset = $conn->query(self::$select, $param_list);
     
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // verifica si el arreglo contiene un registro
-            if (count($resultset) == 1) {
-                // procesa el resultado obtenido
-                $row = $resultset[0];
-                // obtiene el nivel educativo y ciclo escolar asociados
-                $level = EducationLevel::get($row['education_level'], $conn);
-                $year = SchoolYear::get($row['school_year'], $conn);
+        // verifica si el arreglo contiene un registro
+        if (count($resultset) == 1) {
+            // procesa el resultado obtenido
+            $row = $resultset[0];
+            // obtiene el nivel educativo y ciclo escolar asociados
+            $level = EducationLevel::get($row['education_level'], $conn);
+            $year = SchoolYear::get($row['school_year'], $conn);
 
-                // agrega el registro al arreglo
-                $result = new Group(
-                    $row['number'],
-                    $row['grade'],
-                    $row['letter'],
-                    $year,
-                    $level,
-                    $row['student_count']
-                );
-            }
+            // agrega el registro al arreglo
+            $result = new Group(
+                $row['number'],
+                $row['grade'],
+                $row['letter'],
+                $year,
+                $level,
+                $row['student_count']
+            );
         }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
-        }
-
+    
         return $result;
+    }
+
+    public static function register_student_in_group(
+        string $group_number,
+        string $student_id,
+        MySqlConnection $conn = null
+    ) : void {
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
+        }
+
+        // genera una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('i', $group_number);
+        $param_list->add('s', $student_id);
+
+        // realiza la consulta
+        $conn->query(self::$insert_gruop_student, $param_list);
     }
 }

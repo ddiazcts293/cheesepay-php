@@ -30,7 +30,7 @@ class PrevalidationResponse extends QueryResponse {
     }
 }
 
-// establece el tipo de respuesta como archivo JSON
+// establece el tipo de respuesta en fomato JSON
 header('Content-Type: text/json');
 // declara una variable para almacenar la respuesta
 $response = null;

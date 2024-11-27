@@ -44,11 +44,9 @@ final class EnrollmentStatus extends BaseObject {
     /**
      * Obtiene todos los estados de inscripción registrados.
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return array|MySqlException
+     * @return array
      */
-    public static function get_all(
-        MySqlConnection $conn = null
-    ) : MySqlException|array {
+    public static function get_all(MySqlConnection $conn = null) : array {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -61,22 +59,15 @@ final class EnrollmentStatus extends BaseObject {
         // realiza la consulta
         $resultset = $conn->query(self::$select_all);
         
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // procesa los registros
-            foreach ($resultset as $row) {
-                // agrega el registro al arreglo
-                $result[] = new EnrollmentStatus(
-                    $row['number'],
-                    $row['description']
-                );
-            }
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $result[] = new EnrollmentStatus(
+                $row['number'],
+                $row['description']
+            );
         }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
-        }
-
+        
         return $result;
     }
 }

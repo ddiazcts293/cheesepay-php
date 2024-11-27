@@ -84,12 +84,12 @@ final class EducationLevel extends BaseObject {
      * @param string|null $code Código del nivel educativo. Si es nulo, devuelve 
      * todos los niveles educativos registrados.
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return EducationLevel|MySqlException|null|array
+     * @return EducationLevel|null|array
      */
     public static function get(
         string|null $education_level_code,
         MySqlConnection $conn = null
-    ) : EducationLevel|MySqlException|array|null {
+    ) : EducationLevel|array|null {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -112,25 +112,18 @@ final class EducationLevel extends BaseObject {
             $resultset = $conn->query(self::$select, $param_list);
         }
 
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // procesa los registros
-            foreach ($resultset as $row) {
-                // agrega el registro al arreglo
-                $result[] = new EducationLevel(
-                    $row['code'],
-                    $row['description'],
-                    $row['minimum_age'],
-                    $row['maximum_age'],
-                    $row['grade_count']
-                );
-            }
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $result[] = new EducationLevel(
+                $row['code'],
+                $row['description'],
+                $row['minimum_age'],
+                $row['maximum_age'],
+                $row['grade_count']
+            );
         }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
-        }
-
+    
         if (is_array($result) && count($result) == 1) {
             return $result[0];
         }
@@ -141,11 +134,11 @@ final class EducationLevel extends BaseObject {
     /**
      * Obtiene todos los niveles educativos registrados.
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return EducationLevel|MySqlException|array
+     * @return EducationLevel|array
      */
     public static function get_all(
         MySqlConnection $conn = null
-    ) : MySqlException|array|null {
+    ) : array|null {
         return self::get(null, $conn);
     }
 }

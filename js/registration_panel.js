@@ -172,9 +172,9 @@ function showFoundTutors(results) {
     }
 
     if (results.length > 0) {
-        table.classList.remove('hidden');
+        table.hidden = false;
     } else {
-        table.classList.add('hidden');
+        table.hidden = true;
     }
 }
 
@@ -239,7 +239,7 @@ function addTutorToList(tutorData, canEdit = false) {
         };
         
         // hace que el botón sea visible
-        editButton.classList.remove('hidden');
+        editButton.hidden = false;
     }
     
     // establece los valores
@@ -327,7 +327,7 @@ function onPrevalidationFormSubmitted(event) {
             let response = JSON.parse(this.responseText);
 
             // verifica si el resultado de la operación en la base de
-            // datos fue existos
+            // datos fue existosa
             if (response['status'] === 'ok') {
                 let isRegistered = response['is_registered'];
 
@@ -419,7 +419,7 @@ function onRegistrationFormSubmitted(event) {
     let first_surname = form['first_surname'].value;
     let second_surname = form['second_surname'].value;
     let birth_date = form['birth_date'].value;
-    let gender = form['gender'].value;
+    let gender_id = form['gender_id'].value;
     let curp = form['curp'].value;
     let ssn = form['ssn'].value;
     let address_street = form['address_street'].value;
@@ -428,9 +428,9 @@ function onRegistrationFormSubmitted(event) {
     let address_zip = form['address_zip'].value;
     let registeredTutors = [];
     let unregisteredTutors = [];
-    let education_level = form['education_level'].value;
-    let grade = form['grade'].value;
-    let group = form['group'].value;
+    let education_level_id = form['education_level_id'].value;
+    let grade = parseInt(form['grade'].value);
+    let group_id = parseInt(form['group_id'].value);
 
     // obtiene todas las filas de los tutores agregados
     let tutorRows = document.querySelectorAll('#student-tutors-table tbody tr');
@@ -438,19 +438,19 @@ function onRegistrationFormSubmitted(event) {
         // obtiene los datos adjuntos
         const attachment = row.getAttribute('data-attachment');
         const relationshipSelect = row.querySelector('td select');
-        let relationship = relationshipSelect.value;
+        let relationship = parseInt(relationshipSelect.value);
 
         // convierte los datos a un objeto
         let tutorData = JSON.parse(attachment);
         let tutorId = tutorData['id'];
         
         if (tutorId === undefined) {
-            tutorData['relationship'] = relationship;
+            tutorData['relationship_id'] = relationship;
             unregisteredTutors.push(tutorData);
         } else {
             registeredTutors.push({
-                id: tutorId,
-                relationship: relationship
+                id: parseInt(tutorId),
+                relationship_id: relationship
             });
         }
     });
@@ -463,7 +463,7 @@ function onRegistrationFormSubmitted(event) {
         first_surname: first_surname,
         second_surname: second_surname,
         birth_date: birth_date,
-        gender: gender,
+        gender_id: gender_id,
         curp: curp,
         ssn: ssn,
         address: {
@@ -476,9 +476,9 @@ function onRegistrationFormSubmitted(event) {
             registered: registeredTutors,
             unregistered: unregisteredTutors
         },
-        education_level: education_level,
+        education_level_id: education_level_id,
         grade: grade,
-        group: group
+        group_id: group_id
     };
 
     form['new_student_info'].value = JSON.stringify(studentData);

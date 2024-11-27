@@ -38,11 +38,11 @@ final class UniformType extends BaseObject {
     /**
      * Obtiene un arreglo de todos los tipos de uniformes registrados
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return array|MySqlException
+     * @return array
      */
     public static function get_all(
         MySqlConnection $conn = null
-    ) : array|MySqlException {
+    ) : array {
         // crea un arreglo vacío
         $result = [];
 
@@ -55,22 +55,15 @@ final class UniformType extends BaseObject {
         // realiza la consulta
         $resultset = $conn->query(self::$select_all);
         
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // procesa los registros
-            foreach ($resultset as $row) {
-                // agrega el registro al arreglo
-                $result[] = new UniformType(
-                    $row['number'], 
-                    $row['description']
-                );
-            }
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $result[] = new UniformType(
+                $row['number'], 
+                $row['description']
+            );
         }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
-        }
-
+    
         return $result;
     }
 }

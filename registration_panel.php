@@ -74,7 +74,7 @@
                 </div>
             </form>
             <!--Formulario de registro de alumno-->
-            <form id="registration-form" action="payment_panel.php" method="POST" class="hidden" onsubmit="onRegistrationFormSubmitted(event)" onreset="onRegistrationFormReset(event)">
+            <form id="registration-form" action="payment_panel.php" method="POST" hidden onsubmit="onRegistrationFormSubmitted(event)" onreset="onRegistrationFormReset(event)">
                 <input type="hidden" name="new_student_info">
                 <!--Sección de información académica-->
                 <div class="card">
@@ -84,11 +84,11 @@
                     <div class="card-body">
                         <div class="control-row">
                             <div class="control control-col width-4">
-                                <p>Ciclo escolar: <?php echo $school_year; ?> </p>
+                                <p>Ciclo escolar: <?php echo $school_year; ?></p>
                             </div>
                             <div class="control control-col width-8">
                                 <label for="student-education-level">Nivel educativo</label>
-                                <select id="student-education-level" name="education_level" required oninput="changeEducationLevel()">
+                                <select id="student-education-level" name="education_level_id" required oninput="changeEducationLevel()">
                                     <option value="none">Seleccione uno</option>
                                     <?php foreach ($education_levels as $level) {; ?>
                                         <option value="<?php echo $level->get_code(); ?>">
@@ -105,7 +105,7 @@
                             </div>
                             <div class="control control-col witdh-6">
                                 <label for="student-group">Grupo</label>
-                                <select id="student-group" name="group" required disabled>
+                                <select id="student-group" name="group_id" required disabled>
                                     <option value="none">Seleccione uno</option>
                                 </select>
                             </div>
@@ -139,7 +139,7 @@
                             </div>
                             <div class="control control-col width-3">
                                 <label for="student-gender">Género</label>
-                                <select id="student-gender" name="gender" required>
+                                <select id="student-gender" name="gender_id" required>
                                     <option value="none">Seleccione uno</option>
                                     <?php foreach ($genders as $gender) {; ?>
                                         <option value="<?php echo $gender->get_code(); ?>">
@@ -189,9 +189,9 @@
                             <button type="button" id="search-tutor-button" onclick="openSearchTutorDialog()">Buscar a un tutor registrado</button>
                             <button type="button" id="register-tutor-button" onclick="openRegisterTutorDialog()">Registrar a otro tutor</button>
                         </div>
-                        <table id="student-tutors-table" class="hidden">
+                        <table id="student-tutors-table" hidden>
                             <template id="student-tutor-row-template">
-                                <tr>
+                                <tr data-row-id="" data-attachment="">
                                     <td data-field-name="relationship">
                                         <select>
                                             <option value="none">Seleccione uno</option>
@@ -204,8 +204,8 @@
                                     </td>
                                     <td data-field-name="name"></td>
                                     <td data-field-name="actions">
-                                        <button type="button" class="hidden" data-action-name="edit">Editar</button>
-                                        <button type="button" data-action-name="remove">Remover</button>
+                                        <button type="button" data-action-name="edit" data-action-arg="" hidden>Editar</button>
+                                        <button type="button" data-action-name="remove" data-action-arg="">Remover</button>
                                     </td>
                                 </tr>
                             </template>
@@ -240,7 +240,7 @@
                             </div>
                         </div>
                         <div class="control-row">
-                            <table id="search-tutor-results-table" class="hidden">
+                            <table id="search-tutor-results-table" hidden>
                                 <template id="found-tutor-row-template">
                                     <tr>
                                         <td data-field-name="name"></td>
@@ -304,8 +304,8 @@
                         </div>
                     </div>
                     <div class="dialog-footer">
-                        <button type="submit" id="register-tutor-dialog-button" class="hidden">Registrar</button>
-                        <button type="submit" id="update-tutor-dialog-button" class="hidden">Actualizar</button>
+                        <button type="submit" id="register-tutor-dialog-button" hidden>Registrar</button>
+                        <button type="submit" id="update-tutor-dialog-button" hidden>Actualizar</button>
                         <button type="button" onclick="closeRegisterTutorDialog()">Cancelar</button>
                     </div>
                 </form>

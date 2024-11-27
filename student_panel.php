@@ -1,20 +1,41 @@
 <!DOCTYPE html>
+<html lang="es">
     <?php
         require __DIR__ . '/models/student.php';
 
-        // declara una variable para almacenar el objeto alumno
+        // declara una variable para almacenar la información del alumno
         $student = null;
-        // declara una variable para indicar si se solicitó buscar a un alumno
-        $is_search_requested = false;
+        $tutors = [];
+        $groups = [];
+        $payments = [];
+        $current_group = null;
+        $enrollment_status_id = EnrollmentStatus::ENROLLED;
 
-        // verifica si se parámetro de la matricula del alumno está definido
+        // declara una variable para indicar si está habilitado el modo de búscqueda
+        $is_search_mode_enabled = true;
+
+        // verifica si se ha recibido una matricula de un alumno
         if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['student_id'])) {
             // obtiene y limpia la matricula
             $student_id = sanitize($_GET['student_id']);
-            // consulta la información relacionada con la matricula
-            $student = Student::get($student_id);
-            // establece el indicador de búsqueda solicitada en verdadero
-            $is_search_requested = true;
+            
+            // inicia una nueva conexión utilizado una transacción
+            $conn = new MySqlConnection();
+            $conn->start_transaction();
+
+            // consulta la información del alumno
+            $student = Student::get($student_id, $conn);
+            $tutors = $student->get_tutors($conn);
+            $groups = $student->get_groups($conn);
+            $current_group = $student->get_current_group($conn);
+            $payments = $student->get_payments($conn);
+
+            // establece el indicador de búsqueda en falso
+            $is_search_mode_enabled = false;
+            $enrollment_status_id = $student->get_enrollment_status()->get_number();
+
+            // confirma la transacción
+            $conn->commit();
         }
     ?>
     <head>
@@ -40,28 +61,27 @@
         <meta charset="utf-8"/>
     </head>
     <body>
+        <!--Bloque de JS para establecer constantes y variables pasadas desde PHP-->
+        <script>
+            // ciclos escolares
+            <?php if ($student !== null) { ?>
+                const tutors = JSON.parse('<?php echo array_to_json($tutors); ?>');
+            <?php } else { ?>
+                const tutors = [];
+            <?php } ?>
+        </script>
         <div id="content">
             <h1>Panel de información de alumno</h1>
+            <!--Despliega la información de un alumno solo si se encontró uno-->
             <?php if ($student !== null) {; ?>
-                <?php
-                    $full_name = $student->get_full_name();
-                    $is_inactive = ($student->get_withdrawal_date()) !== null;
-                    $group = $student->get_current_group();
-                ?>
-                <?php if ($is_inactive) {; ?>
-                    <div class="alert alert-info">
+                <?php if ($enrollment_status_id !== EnrollmentStatus::ENROLLED) {; ?>
+                    <div class="alert alert-warning">
                         <span>
-                            <strong>Información:</strong> El alumno se encuentra dado de baja desde 
+                            <strong>Información:</strong> El alumno ya no se encuentra inscrito desde 
                             <?php echo $student->get_withdrawal_date(); ?>.
                         </span>
                     </div>
                 <?php }; ?>
-                <div class="alert alert-danger">
-                    <span class="alert-close-btn">&times;</span>
-                    <span>
-                        <strong>Atención:</strong> No se ha cubierto el pago de la cuota de mensualidad actual.
-                    </span>
-                </div>
                 <!--Sección de datos personales-->
                 <div class="control-row">
                     <a href="payment_panel.php?student_id=<?php echo $student_id; ?>">Registrar pago</button>
@@ -73,14 +93,16 @@
                     </div>
                     <div class="card-body">
                         <p>Matrícula: <?php echo $student->get_student_id(); ?></p>
-                        <p>Nombre: <?php echo $full_name; ?></p>
-                        <p>Nivel educativo: <?php echo $group->get_education_level()->get_description(); ?> </p>
-                        <p>Grupo: <?php echo "{$group->get_grade()}-{$group->get_letter()}"; ?></p>
+                        <p>Nombre: <?php echo $student->get_full_name(); ?></p>
+                        <?php if ($current_group !== null) { ?>
+                            <p>Nivel educativo: <?php echo $current_group->get_education_level()->get_description(); ?></p>
+                            <p>Grupo: <?php echo $current_group; ?></p>
+                        <?php } ?>
                         <p>Estado: <?php echo $student->get_enrollment_status()->get_description(); ?> </p>
                         <p>Fecha de alta: <?php echo $student->get_enrollment_date(); ?> </p>
-                        <?php if ($is_inactive) {; ?>
+                        <?php if ($enrollment_status_id !== EnrollmentStatus::ENROLLED) { ?>
                             <p>Fecha de baja: <?php echo $student->get_withdrawal_date(); ?></p>
-                        <?php }; ?>
+                        <?php } ?>
                     </div>
                 </div>
                 <!--Sección de información personal-->
@@ -93,21 +115,23 @@
                         <p>Fecha de nacimiento: <?php echo $student->get_birth_date(); ?></p>
                         <p>CURP: <?php echo $student->get_curp(); ?></p>
                         <p>NSS:
-                            <?php
-                                $ssn = $student->get_ssn();
-                                if (!is_null($ssn)) {;
-                                    echo $ssn;
-                                } else {;
-                            ?>
-                            <button onclick="openSetSsnDialog()">Establecer</button>
-                            <?php }; ?>
+                        <?php
+                            $ssn = $student->get_ssn();
+                            if ($ssn !== null) {
+                                echo $ssn;
+                            } else if ($enrollment_status_id === EnrollmentStatus::ENROLLED) {;
+                        ?>
+                        <button onclick="openSetSsnDialog()">Establecer</button>
+                        <?php }; ?>
                         </p>
                         <h3>Dirección</h3>
                         <p>Calle: <?php echo $student->get_address_street(); ?></p>
                         <p>Número: <?php echo $student->get_address_number(); ?></p>
                         <p>Colonia: <?php echo $student->get_address_district(); ?></p>
                         <p>Código postal: <?php echo $student->get_address_zip(); ?></p>
+                        <?php if ($enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
                         <p><button onclick="openEditAddressDialog()">Actualizar dirección</button></p>
+                        <?php } ?>
                     </div>
                 </div>
                 <!--Sección de tutores registrados-->
@@ -119,23 +143,20 @@
                         <table>
                             <thead>
                                 <tr>
+                                    <th>Nombre</th>
                                     <th>Parentesco</th>
-                                    <th>Nombre completo</th>
-                                    <th>Número de teléfono</th>
-                                    <th>Correo electrónico</th>
-                                    <th>RFC</th>
-                                    <th>Ocupación</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($student->get_tutors() as $tutor) {; ?>
+                                <?php foreach ($tutors as $tutor) { ?>
                                     <tr>
-                                        <td><?php echo $tutor->get_relationship()->get_description(); ?></td>
                                         <td><?php echo $tutor->get_full_name(); ?></td>
-                                        <td><?php echo $tutor->get_phone_number(); ?></td>
-                                        <td><?php echo $tutor->get_email(); ?></td>
-                                        <td><?php echo $tutor->get_rfc(); ?></td>
-                                        <td><?php echo $tutor->get_profession(); ?></td>
+                                        <td><?php echo $tutor->get_relationship()->get_description(); ?></td>
+                                        <td>
+                                            <button type="button" onclick="openViewTutorInfo(<?php echo $tutor->get_number(); ?>)">Información</button>
+                                            <button type="button" onclick="openEditTutorContact(<?php echo $tutor->get_number(); ?>)">Editar contacto</button>
+                                        </td>
                                     </tr>
                                 <?php } ?>
                             </tbody>
@@ -157,7 +178,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($student->get_groups() as $group) {; ?>
+                                <!--Muestra cada uno de los grupos-->
+                                <?php foreach ($groups as $group) {; ?>
                                     <tr>
                                         <td>
                                             <?php echo "{$group->get_grade()}-{$group->get_letter()}"; ?>
@@ -180,21 +202,85 @@
                         <h2>Historial de pagos</h2>
                     </div>
                     <div class="card-body">
-                        <p>Filtrar por: [tipo] [ciclo]</p>
                         <table>
                             <thead>
                                 <tr>
+                                    <th>Folio</th>
                                     <th>Fecha</th>
-                                    <th>Concepto</th>
-                                    <th>Costo</th>
-                                    <th>Pagado por</th>
+                                    <th>Total</th>
+                                    <th>Cuotas</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
+                            <tbody>
+                                <?php foreach ($payments AS $payment) { ?>
+                                    <tr>
+                                        <td><?php echo $payment->get_payment_id(); ?></td>
+                                        <td><?php echo $payment->get_date(); ?></td>
+                                        <td><?php echo $payment->get_total_amount(); ?></td>
+                                        <td><?php echo $payment->get_fee_count(); ?></td>
+                                        <td>
+                                            <button onclick="viewPayment(<?php echo $payment->get_payment_id(); ?>)">Ver</button>
+                                            <button onclick="printInvoice(<?php echo $payment->get_payment_id(); ?>)">Imprimir</button>
+                                        </td>
+                                    </tr>
+                                <?php } ?>
+                            </tbody>
                         </table>
                     </div>
                 </div>
+                <dialog id="edit-tutor-contact-dialog">
+                    <form id="edit-tutor-contact-form" action="#" method="dialog" onsubmit="onEditTutorContactFormSubmitted(event)">
+                        <input type="hidden" name="tutor_id">
+                        <div class="dialog-header">
+                            <span class="dialog-close-btn">&times;</span>
+                            <h2>Actualizar información de contacto</h2>
+                        </div>
+                        <div class="dialog-body">
+                            <div id="edit-tutor-contact-error" class="alert alert-danger" hidden>
+                                <span>
+                                    <strong>Atención:</strong> No se pudo actualizar la información.
+                                </span>
+                            </div>
+                            <div class="control-row">
+                                <div class="control control-col width-6">
+                                    <label for="tutor-contact-email">Correo electrónico</label>
+                                    <input type="email" id="tutor-contact-email" name="email" minlength="1" maxlength="48" required>
+                                </div>
+                                <div class="control control-col width-6">
+                                    <label for="tutor-contact-phone-number">Número de teléfono</label>
+                                    <input type="text" id="tutor-contact-phone-number" name="phone_number" minlength="12" maxlength="12" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dialog-footer">
+                            <input type="submit" value="Actualizar">
+                        </div>
+                    </form>
+                </dialog>
+                <dialog id="view-tutor-info-dialog">
+                    <form id="view-tutor-info-form" action="#" method="dialog">
+                        <input type="hidden" name="tutor_id">
+                        <div class="dialog-header">
+                            <span class="dialog-close-btn">&times;</span>
+                            <h2>Información de tutor</h2>
+                        </div>
+                        <div class="dialog-body">
+                            <div class="control-row">
+                                <p>Nombre: <span id="tutor-info-name"></span></p>
+                                <p>Parentesco: <span id="tutor-info-relationship"></span> </p>
+                                <p>RFC: <span id="tutor-info-rfc"></span> </p>
+                                <p>Número de teléfono: <span id="tutor-info-phone-number"></span> </p>
+                                <p>Correo electrónico: <span id="tutor-info-email"></span></p>
+                            </div>
+                        </div>
+                        <div class="dialog-footer">
+                            <input type="submit" value="Cerrar">
+                        </div>
+                    </form>
+                </dialog>
                 <dialog id="edit-address-dialog">
-                    <form id="edit-address-form" action="#" method="dialog" onsubmit="submitAddress(event)">
+                    <form id="edit-address-form" action="#" method="dialog" onsubmit="onEditAddressFormSubmitted(event)">
                         <!--Agrega un campo oculto para almacenar la matricula del estudiante-->
                         <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
                         <div class="dialog-header">
@@ -202,6 +288,11 @@
                             <h2>Actualizar dirección</h2>
                         </div>
                         <div class="dialog-body">
+                            <div id="edit-address-error" class="alert alert-danger" hidden>
+                                <span>
+                                    <strong>Atención:</strong> No se pudo actualizar la información.
+                                </span>
+                            </div>
                             <div class="control-row">
                                 <div class="control control-col width-6">
                                     <label for="student-address-street">Calle</label>
@@ -218,8 +309,8 @@
                                     <input type="text" id="student-address-district" name="district" minlength="2" maxlength="24" value="<?php echo $student->get_address_district(); ?>" required>
                                 </div>
                                 <div class="control control-col width-6">
-                                    <label for="student-address-zip-code">Código Postal</label>
-                                    <input type="text" id="student-address-zip-code" name="zip_code" minlength="5" maxlength="5" value="<?php echo $student->get_address_zip(); ?>" required>
+                                    <label for="student-address-zip">Código Postal</label>
+                                    <input type="text" id="student-address-zip" name="zip" minlength="5" maxlength="5" value="<?php echo $student->get_address_zip(); ?>" required>
                                 </div>
                             </div>
                         </div>
@@ -229,7 +320,7 @@
                     </form>
                 </dialog>
                 <dialog id="set-ssn-dialog">
-                    <form id="set-ssn-form" action="#" method="dialog" onsubmit="submitSsn(event)">
+                    <form id="set-ssn-form" action="#" method="dialog" onsubmit="onSetSsnFormSubmitted(event)">
                         <!--Agrega un campo oculto para almacenar la matricula del estudiante-->
                         <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
                         <div class="dialog-header">
@@ -237,6 +328,11 @@
                             <h2>Establecer Número de Seguro Social (NSS)</h2>
                         </div>
                         <div class="dialog-body">
+                            <div id="set-ssn-error" class="alert alert-danger" hidden>
+                                <span>
+                                    <strong>Atención:</strong> No se pudo actualizar el valor.
+                                </span>
+                            </div>
                             <div class="control-row">
                                 <div class="control control-col width-12">
                                     <label for="student-address-street">NSS</label>
@@ -249,7 +345,7 @@
                         </div>
                     </form>
                 </dialog>
-            <?php } else if (!$is_search_requested) {; ?>
+            <?php } else if ($is_search_mode_enabled) {; ?>
                 <div class="card">
                     <div class="card-header">
                         <h2>Buscar a un alumno</h2>

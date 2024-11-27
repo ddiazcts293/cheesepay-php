@@ -1,7 +1,7 @@
 <?php
 
 require __DIR__ . '/../functions/query_response.php';
-require __DIR__ . '/../models/student.php';
+require __DIR__ . '/../models/tutor.php';
 
 // establece el tipo de respuesta en fomato JSON
 header('Content-Type: text/json');
@@ -12,32 +12,26 @@ $response = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // determina que los parámetros requeridos estén definidos y no sean nulos
     $are_params_set = isset(
-        $_POST['student_id'], 
-        $_POST['street'], 
-        $_POST['number'], 
-        $_POST['district'], 
-        $_POST['zip']
+        $_POST['tutor_id'], 
+        $_POST['email'], 
+        $_POST['phone_number']
     );
     
     // verifica si están todos los parámetros requeridos
     if ($are_params_set) {
         try {
             // obtiene los valores de los parámetros y los limpia
-            $student_id = sanitize($_POST['student_id']);
-            $street = sanitize($_POST['street']);
-            $number = sanitize($_POST['number']);
-            $district = sanitize($_POST['district']);
-            $zip = sanitize($_POST['zip']);
+            $tutor_id = sanitize($_POST['tutor_id']);
+            $email = sanitize($_POST['email']);
+            $phone_number = sanitize($_POST['phone_number']);
             
             // crea un objeto alumno
-            $student = new Student($student_id);
-            $student->set_address_street($street);
-            $student->set_address_number($number);
-            $student->set_address_district($district);
-            $student->set_address_zip($zip);
+            $student = new Tutor($tutor_id);
+            $student->set_email($email);
+            $student->set_phone_number($phone_number);
     
             // llama a la función para actualizar la dirección
-            $student->update_address();
+            $student->update_contact();
 
             $response = new QueryResponse(QueryResponse::OK);
         } catch (mysqli_sql_exception $ex) {

@@ -45,6 +45,186 @@ h1, h2, h3, h4 {
     padding: 8px;
 }
 
+/* Header */
+
+header {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 40px;
+    background: var(--headerColor);
+    z-index: 9999;
+}
+
+.header-left, .header-right {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.header-left {
+    float: left;
+}
+
+.header-right {
+    float: right;
+}
+
+.header-menu, .header-logo {
+    position: relative;
+    float: left;
+    width: 20px;
+    height: 20px;
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+}
+
+.header-menu i {
+    font-size: 12pt;
+    cursor: pointer;
+    color: #CFD8DC;
+}
+
+.header-menu i:hover {
+    color: #FFF;
+}
+
+.header-logo {
+    height: 30px;
+    width: 30px;
+}
+
+.header-logo img{
+    height: 100%;
+}
+
+.menuItemText {
+    color: rgb(52, 51, 51);
+}
+
+.user-photo, #user-icons {
+    position: relative;
+    float: left;
+    width: 20px;
+    height: 20px;
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+
+}
+
+.user-photo {
+    width: 28px;
+    height: 28px;
+    margin-right: 10px;
+
+}
+
+.user-photo img{
+    height: 100%;
+    border-radius: 12px;
+}
+
+.user-icons {
+    width: 80px;
+}
+
+.user-icons i {
+    margin-right: 10px;
+    font-size: 12pt;
+    cursor: pointer;
+    color: #CFD8DC;
+}
+
+.user-icons i:hover {
+    color: #FFF;
+}
+
+/* Si el menú está visible se ajustan las medidas de la división content */
+#menu.show ~ #content {
+    width: calc(100% - 200px);
+    left: 200px;
+}
+
+/* Menu */
+
+#menu {
+    position: fixed;
+    top: 40px;
+    left: 0px;
+    background: var(--menuColor);
+    width: 200px;
+    height: 100%;
+    display: none;
+}
+
+.menu-item{
+    position: relative;
+    float: left;
+    width: 100%;
+    height: 60px;
+    background: var(--menuColor);
+    border-bottom: 1px solid #EEE; /*var(--menuItemBorder);*/
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.menu-elements{
+    position: relative;
+    float: left;
+    width: calc(100% - 20px);
+    height: calc(100% - 10px);
+    background: var(--menuButtonColor);
+    border-radius: 8px;
+    border: 2px solid #FFF;
+    margin: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    cursor: pointer;
+}
+
+.menu-icon {
+    position: relative;
+    float: left;
+    width: 40px;
+    height: 100%;
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    padding-left: 10px;
+}
+
+.menu-icon i {
+    font-size: 18pt;
+    color: var(--menuItemText);
+}
+
+
+.menu-elements label {
+    font-size: 10pt;
+    color: var(--menuItemText);
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.menu-elements:hover {
+    background: var(--menuButtonHover);
+}
+
+/* Mostrar el menú con display:block cuando se activa */
+#menu.show {
+    display: block;
+}
+
+/* Cards */
+
 .card {
     position: relative;
     float: left;
@@ -55,8 +235,7 @@ h1, h2, h3, h4 {
     border-radius: 8px;
     
     h1, h2, h3, h4 {
-        margin-top: 0px;
-        margin-bottom: 0px;
+        margin: 0px 4px 0px 4px;
     }
 }
 
@@ -79,8 +258,4 @@ h1, h2, h3, h4 {
     float: left;
     width: calc(100% - 32px);
     padding: 0px 16px 8px 16px;
-}
-
-.hidden {
-    display: none;
 }

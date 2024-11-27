@@ -36,11 +36,11 @@ final class Relationship extends BaseObject {
     /**
      * Obtiene todos los parentescos registrados.
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return array|MySqlException
+     * @return array
      */
     public static function get_all(
         MySqlConnection $conn = null
-    ) : MySqlException|array {
+    ) : array {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -53,20 +53,13 @@ final class Relationship extends BaseObject {
         // realiza la consulta
         $resultset = $conn->query(self::$select_all);
         
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // procesa los registros
-            foreach ($resultset as $row) {
-                // agrega el registro al arreglo
-                $result[] = new Relationship(
-                    $row['number'],
-                    $row['description']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $result[] = new Relationship(
+                $row['number'],
+                $row['description']
+            );
         }
 
         return $result;

@@ -1,0 +1,16 @@
+:root{
+    /*--headerColor: #E75377;*/
+    --headerColor: #d31041;
+    /*--menuColor: #FCE174;*/
+    --menuColor: #fcf2cd;
+    --menuButtonColor: #F2A6CC;
+    --tableUnevenRow: #d310418b;
+    --menuItemText: rgb(52, 51, 51);
+    /*--menuButtonHover: #01b44c;*/
+    --menuButtonHover: #FCF2CD;
+    --textLabelColor: rgb(52, 51, 51);
+    --contentBackground: #FFFFFF;
+    --cardBorder: #D4D4D4;
+    --inputBoxColor: #fcf2cd;
+    --inputTextColor: 
+}

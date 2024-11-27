@@ -1,6 +1,5 @@
 <?php
 
-require_once __DIR__ . '/mysql_exception.php';
 require_once __DIR__ . '/base_object.php';
 require_once __DIR__ . '/helpers.php';
 
@@ -41,57 +40,62 @@ class MySqlConnection {
     
     private $conn;
 
-    public function query(string $sql, MySqlParamList $param_list = null) : mixed {
+    public function query(string $sql, MySqlParamList $param_list = null) : array {
         // declara un arreglo vacio para almacenar las filas obtenidas
         $rows = [];
-        // declara una variable para almacenar una excepción en caso de producirse
-        $exception = null;
+        // prepara la sentencia a ejecutar
+        $stmt = $this->conn->prepare($sql);
 
-        try {
-            // prepara la sentencia a ejecutar
-            $stmt = $this->conn->prepare($sql);
+        // verifica si se recibió una lista de parámetros
+        if ($param_list !== null && $param_list->count() > 0) {    
+            // enlaza los parámetros
+            $params = $param_list->get_params();
+            $stmt->bind_param($param_list->get_types(), ...$params);
+        }
 
-            if ($param_list !== null && $param_list->count() > 0) {    
-                // enlaza los parámetros
-                $params = $param_list->get_params();
-                $stmt->bind_param($param_list->get_types(), ...$params);
-            }
-
-            // ejecuta la consulta
-            $stmt->execute();
-            
-            // procesa múltiples conjuntos de resultados
-            do {
-                // verifica si se obtuvo un conjunto de resultados
-                if ($result = $stmt->get_result()) {
-                    // recorre cada fila del conjunto mientras se pueda obtener un 
-                    // arreglo con sus campos
-                    while ($row = $result->fetch_assoc()) {
-                        // agrega un nuevo objeto en el arreglo
-                        $rows[] = $row;
-                    }
-
-                    // libera los recursos asociados al resultado obtenido
-                    $result->free();
+        // ejecuta la consulta
+        $stmt->execute();
+        
+        // procesa múltiples conjuntos de resultados
+        do {
+            // verifica si se obtuvo un conjunto de resultados
+            if ($result = $stmt->get_result()) {
+                // recorre cada fila del conjunto mientras se pueda obtener un 
+                // arreglo con sus campos
+                while ($row = $result->fetch_assoc()) {
+                    // agrega un nuevo objeto en el arreglo
+                    $rows[] = $row;
                 }
-            } 
-            // avanza al siguiente conjunto (si es que hay)
-            while ($stmt->more_results() && $stmt->next_result());
 
-            // termina la sentencia
-            $stmt->close();
-        } catch (Exception $ex) {
-            $exception = new MySqlException($ex->getCode(), $ex->getMessage());
-        }
+                // libera los recursos asociados al resultado obtenido
+                $result->free();
+            }
+        } 
+        // avanza al siguiente conjunto (si es que hay)
+        while ($stmt->more_results() && $stmt->next_result());
 
-        // verifica si se produjo un error
-        if ($exception !== null) {
-            return $exception;
-        }
-
+        // termina la sentencia
+        $stmt->close();
+        
         return $rows;
     }
     
+    public function start_transaction(): void {
+        $this->conn->begin_transaction(MYSQLI_TRANS_START_READ_WRITE);
+    }
+
+    public function set_autocommit(bool $enable): void {
+        $this->conn->autocommit($enable);
+    }
+
+    public function commit(): void {
+        $this->conn->commit();
+    }
+
+    public function rollback(): void {
+        $this->conn->rollback();
+    }
+
     public function __construct() {
         $this->conn = self::open_connection();
     }

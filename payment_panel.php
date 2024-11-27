@@ -1,7 +1,168 @@
 <!DOCTYPE html>
+<html lang="es">
+    <?php
+        /**
+         * El panel puede actuar de tres maneras:
+         * 1. Cuando se va a registrar a un alumno nuevo
+         * 2. Cuando un alumno registrado va a realizar un pago
+         * 3. Cuando se desea consultar un pago hecho
+         */
+
+        require __DIR__ . '/models/student.php';
+
+        // declara las variables para almacenar la información del alumno
+        $student = null;
+        $tutors = [];
+        $current_group = null;
+        $payment = null;
+
+        // indicadores de comportamiento
+        $is_registering_new_student = false;
+        $is_read_only = false;
+        
+        // información de inscripción y cuotas
+        $new_student_info = null;
+        $enrollment_info = null;
+        $enrollment_status_id = EnrollmentStatus::ENROLLED;
+        $uniform_types = [];
+        $special_event_fees = [];
+        $uniform_fees = [];
+        $monthly_fees = [];
+        $stationery_fee = null;
+        $fees = [];
+
+        // inicia una conexión para realizar las consultas
+        $conn = new MySqlConnection();
+        $conn->start_transaction();
+
+        // obtiene el ciclo escolar actual
+        $school_year = SchoolYear::get(null, $conn);
+
+        // verifica si el método de la petición es GET
+        if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+            // verifica si se recibió el folio de un pago
+            if (isset($_GET['payment_id'])) {
+                // obtener pago y limpia la cadena con el folio del pago
+                $payment_id = sanitize($_GET['payment_id']);
+
+                // obtiene los datos del pago
+                $payment = Payment::get($payment_id);
+                if ($payment !== null) {
+                    $fees = $payment->get_fees();
+                    $student = $payment->get_student();
+                    $tutors[] = $payment->get_tutor();
+                    $current_group = $student->get_current_group();
+                    $enrollment_status_id = $student->get_enrollment_status()->get_number();
+                }
+
+                // establece el modo de solo lectura
+                $is_read_only = true;
+            } 
+            // de lo contrario, verifica si se recibio la matricula de un alumno
+            else if (isset($_GET['student_id'])) {
+                // obtiene y limpia la cadena con la matricula
+                $student_id = sanitize($_GET['student_id']);
+    
+                // obtiene los datos del alumno
+                $student = Student::get($student_id, $conn);
+                if ($student !== null) {
+                    $tutors = $student->get_tutors($conn);
+                    $current_group = $student->get_current_group();
+                    $enrollment_status_id = $student->get_enrollment_status()->get_number();
+                }
+            }
+            // de lo contrario termina la ejecución de código
+            else {
+                die('Invalid request');
+            }
+        }
+        // de lo contrario, verifica si el método de la petición es POST y 
+        // si se recibieron los datos de un alumno en proceso de registro
+        else if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['new_student_info'])) {
+            // obtiene un objeto con los datos del alumno por registrar
+            $new_student_info = json_decode($_POST['new_student_info'], true);
+
+            // verifica que el objeto contengra todos los datos necesarios
+            $has_required_fields = isset(
+                $new_student_info['name'],
+                $new_student_info['first_surname'],
+                $new_student_info['birth_date'],
+                $new_student_info['gender_id'],
+                $new_student_info['curp'],
+                $new_student_info['ssn'],
+                $new_student_info['address'],
+                $new_student_info['tutors'],
+                $new_student_info['grade'],
+                $new_student_info['group_id'],
+                $new_student_info['education_level_id'],
+            );
+
+            if (!$has_required_fields) {
+                die('Missing required fields in JSON payload.');
+            }
+
+            // obtiene los datos académicos
+            $grade = $new_student_info['grade'];
+            $group_id = $new_student_info['group_id'];
+            $education_level_id = $new_student_info['education_level_id'];
+
+            // crea un nuevo objeto alumno
+            $student = new Student(
+                '-',
+                $new_student_info['name'],
+                $new_student_info['first_surname'],
+                $new_student_info['second_surname']
+            );
+
+            // obtiene el grupo en el que el alumno será inscrito
+            $current_group = Group::get($group_id, $conn);
+            // obtiene la cuota de inscripción para el nivel educativo seleccionado
+            $enrollment_fee = $school_year->get_enrollment_fee($education_level_id, $conn);
+            // crea un objeto con la información de la inscripción
+            $enrollment_info = [
+                'group_id' => $group_id,
+                'fee_id' => $enrollment_fee->get_number()
+            ];
+
+            // carga las cuotas preterminadas para un nuevo alumno
+            $fees[] = $enrollment_fee;
+            $fees[] = MonthlyFee::get_next($education_level_id, $conn);
+            $fees[] = $school_year->get_stationery_fee($education_level_id, $grade, $conn);
+            $fees[] = $school_year->get_maintenance_fee($conn);
+
+            // indica que si se está registrando a un nuevo alumno
+            $is_registering_new_student = true;
+        } 
+        // de lo contrario, termina la ejecución
+        else {
+            die('Invalid request');
+        }
+
+        // verifica si el modo de solo lectura no está activo
+        if (!$is_read_only) {
+            // obtiene las cuotas que pueden incluirse en un pago ordinario
+            $uniform_types = UniformType::get_all($conn);
+            $special_event_fees = $school_year->get_special_event_fee(true, $conn);
+            
+            // verífica si se alumno se encuentra inscrito en un grupo
+            if ($current_group !== null) {
+                $education_level_id = $current_group->get_education_level()->get_code();
+                $uniform_fees = $school_year->get_uniform_fee($education_level_id, null, $conn);
+                $monthly_fees = $school_year->get_monthly_fee($education_level_id, true, $conn);
+                $stationery_fee = $school_year->get_stationery_fee(
+                    $education_level_id, 
+                    $current_group->get_grade(), 
+                    $conn
+                );
+            }
+        }
+
+        // confirma la transacción
+        $conn->commit()
+    ?>
     <head>
         <!--title-->
-        <title>Registro de pago</title>
+        <title>Panel de pagos</title>
         <!--javascript-->
         <script src="js/fontawesome/solid.js"></script>
         <script src="js/payment_panel.js"></script>
@@ -18,104 +179,57 @@
         <!--metadata-->
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <meta charset="utf-8"/>
-        <?php require __DIR__ . '/models/student.php';
-            
-            // inicia una conexión para realizar consultas en una misma transacción
-            $conn = new MySqlConnection();
-            // obtiene el ciclo escolar actual
-            $school_year = SchoolYear::get(null, $conn);
-            // declara una variable para almacenar las cuotas disponibles
-            $fees = [];
-
-            // declara las variables para almacenar la información de alumno
-            $is_new_student = false;
-            $new_student_info = null;
-            $student = null;
-            $tutors = [];
-            $group = null;
-            $enrollment_status_id = EnrollmentStatus::ENROLLED;
-
-            // verifica si el método de la petición es GET y si se recibio un
-            // parámetro para la matrícula de estudiante
-            if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['student_id'])) {
-                // obtiene y limpia la cadena recibida
-                $student_id = sanitize($_GET['student_id']);
-
-                // obtiene los datos del alumno
-                $student = Student::get($student_id);
-                $tutors = $student->get_tutors();
-                $group = $student->get_current_group();
-                $enrollment_status_id = $student->get_enrollment_status()->get_number();
-            }
-            // de lo contrario, verifica si el método de la petición es POST y 
-            // si se recibieron los datos de un alumno
-            else if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['new_student_info'])) {
-                // obtiene un objeto con los datos del alumno por registrar
-                $new_student_info = json_decode($_POST['new_student_info']);
-
-                // TODO: realiazar validación de campos
-                $group_code = $new_student_info->group;
-                $level_code = $new_student_info->education_level;
-                $grade = $new_student_info->grade;
-
-                // crea un nuevo objeto alumno
-                $student = new Student(
-                    '-',
-                    $new_student_info->name,
-                    $new_student_info->first_surname,
-                    $new_student_info->second_surname
-                );
-
-                // obtiene el grupo en el que el alumno será inscrito
-                $group = Group::get($group_code, $conn);
-
-                // carga las cuotas iniciales para un alumno
-                $new_student_fees[] = $school_year->get_enrollment_fee($level_code, $conn);
-                $new_student_fees[] = MonthlyFee::get_next($level_code, $conn);
-                $new_student_fees[] = $school_year->get_stationery_fee($level_code, $grade, $conn);
-                $new_student_fees[] = $school_year->get_maintenance_fee($conn);
-                
-                $is_new_student = true;
-            } 
-            // de lo contrario, termina la ejecución
-            else {
-                die('Invalid request');
-            }
-
-            // obtiene las cuotas que pueden incluirse en un pago normal
-            $edu_level_id = $group->get_education_level()->get_code();
-            $special_event_fees = $school_year->get_special_event_fee(true, $conn);
-            $uniform_fees = $school_year->get_uniform_fee($edu_level_id, null, $conn);
-            $monthly_fees = $school_year->get_monthly_fee($edu_level_id, true, $conn);
-            $uniform_types = UniformType::get_all($conn);
-        ?>
     </head>
     <body>
         <!--Bloque de JS para establecer constantes y variables pasadas desde PHP-->
         <script>
             // establece si el alumno es nuevo
-            const isNewStudent = <?php echo $is_new_student ? 'true' : 'false'; ?>;
+            const isNewStudent = <?php echo $is_registering_new_student ? 'true' : 'false'; ?>;
             // establece la matrícula del alumno
-            const studentId = '<?php echo $student->get_student_id(); ?>';
+            const studentId = '<?php echo ($student !== null) ? $student->get_student_id() : 0; ?>';
             
-            <?php if ($is_new_student) {; ?>
+            // verifica si se está registrando a un nuevo alumno
+            <?php if ($is_registering_new_student) {; ?>
                 // almacena la información de un nuevo alumno
                 const newStudentInfo = JSON.parse('<?php echo json_encode($new_student_info); ?>');
+                // almacena la información de la inscripción
+                const enrollmentInfo = JSON.parse('<?php echo json_encode($enrollment_info); ?>');
                 // almacena la lista de cuotas predeterminadas para un nuevo alumno
-                const defaultFeeList = JSON.parse('<?php echo array_to_json($new_student_fees); ?>');
+                const defaultFeeList = JSON.parse('<?php echo array_to_json($fees); ?>');
             <?php } else {; ?>
                 // indica que no hay información de un nuevo alumno
                 const newStudentInfo = {};
+                const enrollmentInfo = {};
                 // indica que no hay cuotas predeterminadas
                 const defaultFeeList = [];
             <?php }; ?>
 
-            // almacena la lista de cuotas de uniformes para que puedan ser filtradas desde el selector
-            const uniformFees = JSON.parse('<?php echo array_to_json($uniform_fees); ?>');
+            // verifica si se está consultando un pago
+            <?php if (!$is_read_only && $enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
+                // almacena la lista de cuotas de uniformes para que puedan ser filtradas desde el selector
+                const uniformFees = JSON.parse('<?php echo array_to_json($uniform_fees); ?>');
+                const stationeryFee = '<?php echo $stationery_fee->get_number(); ?>';
+            <?php } else { ?>
+                // no almacena nada cuando se está consultado un pago
+                const uniformFees = [];
+                const stationeryFee = 0;
+            <?php } ?>
         </script>
         <div id="content">
             <h1>Panel de pagos</h1>
-            <?php if ($enrollment_status_id != EnrollmentStatus::GRADUATED) {; ?>
+            <!--Verifica si no se está consultando un pago y si el alumno se encuentra graduado-->
+            <?php if (!$is_read_only && $enrollment_status_id === EnrollmentStatus::GRADUATED) { ?>
+                <!--Alerta que se muestra cuando el alumno se ha graduado-->
+                <div class="alert alert-danger">
+                    <span><strong>Atención:</strong> El alumno ha concluido sus estudios en la institución. Ya no es posible registrar nuevos pagos.</span>
+                </div>
+                <a href="/">Regresar</a>
+            <?php } else if ($is_read_only && $payment === null) { ?>
+                <!--Alerta que se muestra cuando no se ha localizado un pago-->
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> No se pudo localizar el pago especificado.
+                </div>
+            <?php } else { ?>
                 <form id="payment-form" action="#" onsubmit="onPaymentFormSubmitted(event)">
                     <div class="card">
                         <div class="card-header">
@@ -124,110 +238,124 @@
                         <!--Información del pago-->
                         <div class="card-body">
                             <div class="control-row">
-                                <p>Fecha de pago: <?php echo date('d/m/Y'); ?> </p>
-                                <?php if (!$is_new_student) {; ?>
+                                <?php if ($payment !== null) { ?>
+                                    <p>Folio: <?php echo $payment->get_payment_id();?></p>
+                                <?php } ?>
+                                <p>Fecha de pago: <?php echo ($payment !== null) ? $payment->get_date() : date('d/m/Y'); ?></p>
+                                <?php if (!$is_registering_new_student) {; ?>
                                     <p>Matrícula: <?php echo $student->get_student_id(); ?></p>
                                 <?php }; ?>
                                 <p>Alumno: <?php echo $student->get_full_name(); ?></p>
                                 <p>Ciclo escolar: <?php echo $school_year; ?> </p>
-                                <p>Nivel educativo: <?php echo $group->get_education_level(); ?></p>
-                                <p>Grado y grupo: <?php echo $group; ?></p>
-                                <p>Fecha de alta: </p>
-                                <p>Estado de inscripción: </p>
+                                <?php if ($current_group !== null) { ?>
+                                    <p>Nivel educativo: <?php echo $current_group->get_education_level(); ?></p>
+                                    <p>Grupo: <?php echo $current_group; ?></p>
+                                <?php } ?>
+                                <p>Estado de inscripción: 
+                                    <?php if ($is_registering_new_student) { ?>
+                                        En proceso de registro
+                                    <?php } else { 
+                                        echo $student->get_enrollment_status()->get_description();
+                                    } ?>
+                                </p>
                             </div>
                             <div class="control-row">
-                                <div class="control control-col width-8">
-                                    <label for="student-tutor">Tutor</label>
-                                    <select id="student-tutor" name="tutor" required>
-                                        <option value="none">Seleccione uno</option>
-                                        <?php foreach ($tutors as $tutor) {; ?>
-                                            <option value="<?php echo $tutor->get_number(); ?>">
-                                                <?php echo $tutor->get_full_name(); ?>
-                                            </option>
-                                        <?php }; ?>
-                                    </select>
-                                </div>
+                                <?php if (!$is_read_only) { ?>
+                                    <div class="control control-col width-8">
+                                        <label for="student-tutor">Tutor</label>
+                                        <select id="student-tutor" name="tutor" required>
+                                            <option value="none">Seleccione uno</option>
+                                            <?php foreach ($tutors as $tutor) {; ?>
+                                                <option value="<?php echo $tutor->get_number(); ?>">
+                                                    <?php echo $tutor->get_full_name(); ?>
+                                                </option>
+                                            <?php }; ?>
+                                        </select>
+                                    </div>
+                                <?php } else { ?>
+                                    <p>Tutor: <?php echo $payment->get_tutor()->get_full_name(); ?></p>
+                                <?php } ?>
                             </div>
                         </div>
                     </div>
                     <div class="card">
-                        <!--Sección de cuotas en el pago-->
-                        <div class="card-header">
-                            <!--Selectores de cuotas-->
-                            <div class="control-row">
-                                <!--Selector de tipo de cuota-->
-                                <div class="control control-col width-4">
-                                    <label for="fee-type">Tipo de cuota</label>
-                                    <select id="fee-type" oninput="changeFeeType()">
-                                        <option value="none">Seleccione una</option>
-                                        <!--
-                                        Omite incluir las cuotas de inscripción, mensualidad, mantenimiento y papeleria
-                                        cuando se está registrando a un alumno
-                                        -->
-                                        <option value="monthly">Mensualidad</option>
-                                        <?php if (!$is_new_student) {; ?>
-                                            <option value="enrollment">Inscripción</option>
-                                            <option value="maintenance">Mantenimiento</option>
-                                            <option value="stationery">Papelería</option>
-                                        <?php }; ?>
-                                        <option value="uniform">Uniforme</option>
-                                        <option value="special_event">Evento especial</option>
-                                    </select>
-                                </div>
-                                <!--Selector de mensualidades-->
-                                <section id="monthly-selector" hidden>
+                        <?php if (!$is_read_only) { ?>
+                            <!--Sección de cuotas en el pago-->
+                            <div class="card-header">
+                                <!--Selectores de cuotas-->
+                                <div class="control-row">
+                                    <!--Selector de tipo de cuota-->
                                     <div class="control control-col width-4">
-                                        <label for="monthly-fee">Mes</label>
-                                        <select id="monthly-fee" oninput="changeMonthlyFee()">
+                                        <label for="fee-type">Tipo de cuota</label>
+                                        <select id="fee-type" oninput="onFeeTypeChanged()">
                                             <option value="none">Seleccione una</option>
-                                            <?php foreach ($monthly_fees as $monthly) {; ?>
-                                                <option value="<?php echo $monthly->get_number(); ?>">
-                                                    <?php echo $monthly->get_concept(); ?>
-                                                </option>
+                                            <!--
+                                            Omite incluir las cuotas de inscripción, mensualidad, mantenimiento y papeleria
+                                            cuando se está registrando a un alumno
+                                            -->
+                                            <option value="monthly">Mensualidad</option>
+                                            <?php if (!$is_registering_new_student) {; ?>
+                                                <option value="stationery">Papelería</option>
                                             <?php }; ?>
+                                            <option value="uniform">Uniforme</option>
+                                            <option value="special_event">Evento especial</option>
                                         </select>
                                     </div>
-                                </section>
-                                <!--Selector de uniformes-->
-                                <section id="uniform-selector" hidden>
+                                    <!--Selector de mensualidades-->
+                                    <section id="monthly-selector" hidden>
+                                        <div class="control control-col width-4">
+                                            <label for="monthly-fee">Mes</label>
+                                            <select id="monthly-fee" oninput="onMonthlyFeeChanged()">
+                                                <option value="none">Seleccione una</option>
+                                                <?php foreach ($monthly_fees as $monthly) {; ?>
+                                                    <option value="<?php echo $monthly->get_number(); ?>">
+                                                        <?php echo $monthly->get_concept(); ?>
+                                                    </option>
+                                                <?php }; ?>
+                                            </select>
+                                        </div>
+                                    </section>
+                                    <!--Selector de uniformes-->
+                                    <section id="uniform-selector" hidden>
+                                        <div class="control control-col width-4">
+                                            <label for="uniform-type">Tipo de uniforme</label>
+                                            <select id="uniform-type" oninput="onUniformTypeChanged()">
+                                                <option value="none">Seleccione uno</option>
+                                                <?php foreach ($uniform_types as $type) {; ?>
+                                                    <option value="<?php echo $type->get_number(); ?>">
+                                                        <?php echo $type->get_description(); ?>
+                                                    </option>
+                                                <?php }; ?>
+                                            </select>
+                                        </div>
+                                        <div class="control control-col width-4">
+                                            <label for="uniform-fee">Uniforme</label>
+                                            <select id="uniform-fee" oninput="onUniformFeeChanged()">
+                                                <option value="none">Seleccione uno</option>
+                                            </select>
+                                        </div>
+                                    </section>
+                                    <!--Selector de eventos especiales-->
+                                    <section id="special-event-selector" hidden>
+                                        <div class="control control-col width-4">
+                                            <label for="special-event-fee">Evento especial</label>
+                                            <select id="special-event-fee" oninput="onSpecialEventFeeChanged()">
+                                                <option value="none">Seleccione uno</option>
+                                                <?php foreach ($special_event_fees as $event) {; ?>
+                                                    <option value="<?php echo $event->get_number(); ?>">
+                                                        <?php echo $event->get_concept(); ?>
+                                                    </option>
+                                                <?php }; ?>
+                                            </select>
+                                        </div>
+                                    </section>
+                                    <!--Botón para agregar la cuota seleccionada-->
                                     <div class="control control-col width-4">
-                                        <label for="uniform-type">Tipo de uniforme</label>
-                                        <select id="uniform-type" oninput="changeUniformType()">
-                                            <option value="none">Seleccione uno</option>
-                                            <?php foreach ($uniform_types as $type) {; ?>
-                                                <option value="<?php echo $type->get_number(); ?>">
-                                                    <?php echo $type->get_description(); ?>
-                                                </option>
-                                            <?php }; ?>
-                                        </select>
+                                        <button type="button" id="add-fee-button" onclick="retrieveFee()" disabled>Agregar</button>
                                     </div>
-                                    <div class="control control-col width-4">
-                                        <label for="uniform-fee">Uniforme</label>
-                                        <select id="uniform-fee" oninput="changeUniformFee()">
-                                            <option value="none">Seleccione uno</option>
-                                        </select>
-                                    </div>
-                                </section>
-                                <!--Selector de eventos especiales-->
-                                <section id="special-event-selector" hidden>
-                                    <div class="control control-col width-4">
-                                        <label for="special-event-fee">Evento especial</label>
-                                        <select id="special-event-fee" oninput="changeSpecialEventFee()">
-                                            <option value="none">Seleccione uno</option>
-                                            <?php foreach ($special_event_fees as $event) {; ?>
-                                                <option value="<?php echo $event->get_number(); ?>">
-                                                    <?php echo $event->get_concept(); ?>
-                                                </option>
-                                            <?php }; ?>
-                                        </select>
-                                    </div>
-                                </section>
-                                <!--Botón para agregar la cuota seleccionada-->
-                                <div class="control control-col width-4">
-                                    <button type="button" id="add-fee-button" onclick="loadFeeFromDb()" disabled>Agregar</button>
                                 </div>
                             </div>
-                        </div>
+                        <?php } ?>
                         <!--Tabla de cuotas-->
                         <div class="card-body">
                             <table id="fees-table">
@@ -246,12 +374,14 @@
                                         <th>Id.</th>
                                         <th>Concepto</th>
                                         <th>Costo</th>
-                                        <th>Acciones</th>
+                                        <?php if (!$is_read_only) { ?>
+                                            <th>Acciones</th>
+                                        <?php } ?>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <!--Agrega las cuotas predeterminadas para un alumno nuevo-->
-                                    <?php if ($is_new_student) foreach ($new_student_fees as $fee) { ?>
+                                    <?php foreach ($fees as $fee) { ?>
                                         <tr data-attachment="<?php echo $fee->get_number(); ?>">
                                             <td data-field-name="id"><?php echo $fee->get_number(); ?></td>
                                             <td data-field-name="concept"><?php echo $fee->get_concept(); ?></td>
@@ -266,7 +396,8 @@
                                             <?php 
                                                 // calcula el total inicial
                                                 $total = 0.0;
-                                                if ($is_new_student) foreach ($new_student_fees as $fee) {
+                                                // recorre todas las cuotas agregadas para sumar los costos
+                                                foreach ($fees as $fee) {
                                                     $total += $fee->get_cost();
                                                 }
 
@@ -279,19 +410,34 @@
                         </div>
                         <div class="card-footer">
                             <div class="control-row control-width-4">
-                                <button>Continuar</button>
-                                <button>Cancelar</button>
+                                <?php if ($is_read_only) { ?>
+                                    <button type="button" onclick="printInvoice(<?php echo $payment->get_payment_id()?>)">Imprimir factura</button>
+                                <?php } else { ?>
+                                    <button type="submit">Continuar</button>
+                                    <button type="button">Cancelar</button>
+                                <?php } ?>
                             </div>
                         </div>
                     </div>
                 </form>
-            <?php } else {; ?>
-                <!--Alerta que se muestra cuando el alumno se ha graduado-->
-                <div class="alert alert-danger">
-                    <span><strong>Atención:</strong> El alumno ha concluido sus estudios en la institución. Ya no es posible registrar nuevos pagos.</span>
-                </div>
-                <a href="/">Regresar</a>
-            <?php }; ?>
+                <!--Cuadro de diálogo de mensaje-->
+                <dialog id="message-dialog">
+                    <form id="message-form" action="#" method="dialog" onsubmit="onMessageFormSubmitted(event)">
+                        <input type="hidden" name="student_id" value="">
+                        <input type="hidden" name="payment_id" value="">
+                        <div class="dialog-header">
+                            <h2 id="message-dialog-title">Aviso</h2>
+                        </div>
+                        <div class="dialog-body">
+                            <p id="message-dialog-success" hidden>La operación se realizó correctamente</p>
+                            <p id="message-dialog-fail" hidden>Ocurrió un error al realizar la operación (<span id="message-dialog-fail-reason">)</p>
+                        </div>
+                        <div class="dialog-footer">
+                            <button type="submit">Aceptar</button>
+                        </div>
+                    </form>
+                </dialog>
+            <?php } ?>
         </div>
     </body>
 </html>

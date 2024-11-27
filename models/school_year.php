@@ -189,12 +189,12 @@ final class SchoolYear extends BaseObject {
      * @param string $education_level_code Código del nivel educativo. Si es 
      * null, devuelve para todos los niveles educativos.
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return EnrollmentFee|array|null|MySqlException
+     * @return EnrollmentFee|array|null
      */
     public function get_groups(
         string $education_level_code = null,
         MySqlConnection $conn = null
-    ) : array|MySqlException {
+    ) : array {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -221,32 +221,25 @@ final class SchoolYear extends BaseObject {
 
         // resaliza la consulta
         $resultset = $conn->query($query, $param_list);
-        
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // verifica si el arreglo contiene un elemento
-            foreach ($resultset as $row) {
-                // procesa el resultado obtenido
-                $level = find_item(
-                    'code', 
-                    $row['education_level'], 
-                    $education_levels
-                );
+    
+        // verifica si el arreglo contiene un elemento
+        foreach ($resultset as $row) {
+            // procesa el resultado obtenido
+            $level = find_item(
+                'code', 
+                $row['education_level'], 
+                $education_levels
+            );
 
-                // agrega el registro al arreglo
-                $result[] = new Group(
-                    $row['number'],
-                    $row['grade'],
-                    $row['letter'],
-                    $this,
-                    $level,
-                    $row['student_count']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+            // agrega el registro al arreglo
+            $result[] = new Group(
+                $row['number'],
+                $row['grade'],
+                $row['letter'],
+                $this,
+                $level,
+                $row['student_count']
+            );
         }
 
         return $result;
@@ -257,12 +250,12 @@ final class SchoolYear extends BaseObject {
      * @param string $education_level_code Código del nivel educativo. Si es 
      * null, devuelve las cuotas para todos los niveles.
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return EnrollmentFee|array|null|MySqlException
+     * @return EnrollmentFee|array|null
      */
     public function get_enrollment_fee(
         string $education_level_code = null,
         MySqlConnection $conn = null
-    ) : EnrollmentFee|array|null|MySqlException {
+    ) : EnrollmentFee|array|null {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -289,31 +282,24 @@ final class SchoolYear extends BaseObject {
 
         // resaliza la consulta
         $resultset = $conn->query($query, $param_list);
-        
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // verifica si el arreglo contiene un elemento
-            foreach ($resultset as $row) {
-                // procesa el resultado obtenido
-                $level = find_item(
-                    'code', 
-                    $row['education_level'], 
-                    $education_levels
-                );
+    
+        // verifica si el arreglo contiene un elemento
+        foreach ($resultset as $row) {
+            // procesa el resultado obtenido
+            $level = find_item(
+                'code', 
+                $row['education_level'], 
+                $education_levels
+            );
 
-                // agrega el registro al arreglo
-                $result[] = new EnrollmentFee(
-                    $row['fee'],
-                    $this,
-                    $row['concept'],
-                    $level,
-                    $row['cost']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+            // agrega el registro al arreglo
+            $result[] = new EnrollmentFee(
+                $row['fee'],
+                $this,
+                $row['concept'],
+                $level,
+                $row['cost']
+            );
         }
         
         if (is_array($result) && count($result) == 1) {
@@ -326,11 +312,11 @@ final class SchoolYear extends BaseObject {
     /**
      * Obtiene la cuota de mantenimiento pertenecientes al ciclo escolar.
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return MaintenanceFee|null|MySqlException
+     * @return MaintenanceFee|null
      */
     public function get_maintenance_fee(
         MySqlConnection $conn = null
-    ) : MaintenanceFee|null|MySqlException {
+    ) : MaintenanceFee|null {
         // declara una variable para almacenar el resultado
         $result = null;
 
@@ -346,25 +332,18 @@ final class SchoolYear extends BaseObject {
         // realiza la consulta
         $resultset = $conn->query(self::$select_maintenance_fee, $param_list);
 
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // verifica si el arreglo contiene un registro
-            if (count($resultset) == 1) {
-                // procesa el resultado obtenido
-                $row = $resultset[0];
+        // verifica si el arreglo contiene un registro
+        if (count($resultset) == 1) {
+            // procesa el resultado obtenido
+            $row = $resultset[0];
 
-                // agrega el registro al arreglo
-                $result = new MaintenanceFee(
-                    $row['fee'], 
-                    $this,
-                    $row['concept'],
-                    $row['cost']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+            // agrega el registro al arreglo
+            $result = new MaintenanceFee(
+                $row['fee'], 
+                $this,
+                $row['concept'],
+                $row['cost']
+            );
         }
 
         return $result;
@@ -375,12 +354,12 @@ final class SchoolYear extends BaseObject {
      * @param MySqlConnection|null $conn Conexión previamente iniciada.
      * @param bool $include_only_current Indica que solo se deben incluir 
      * aquellas que aun sigan vigentes.
-     * @return array|MySqlException
+     * @return array
      */
     public function get_special_event_fee(
         bool $include_only_current = false,
         MySqlConnection $conn = null
-    ) : MySqlException|array {
+    ) : array {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -400,23 +379,16 @@ final class SchoolYear extends BaseObject {
             $param_list
         );
         
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // procesa los registros
-            foreach ($resultset as $row) {
-                // agrega el registro al arreglo
-                $result[] = new SpecialEventFee(
-                    $row['fee'],
-                    $this,
-                    $row['concept'],
-                    $row['scheduled_date'],
-                    $row['cost']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $result[] = new SpecialEventFee(
+                $row['fee'],
+                $this,
+                $row['concept'],
+                $row['scheduled_date'],
+                $row['cost']
+            );
         }
 
         return $result;
@@ -429,13 +401,13 @@ final class SchoolYear extends BaseObject {
      * @param bool $include_only_current Indica que solo se deben incluir 
      * aquellas que aun sigan vigentes.
      * @param MySqlConnection|null $conn Conexión previamente iniciada.
-     * @return array|MySqlException
+     * @return array
      */
     public function get_monthly_fee(
         string $education_level_code = null,
         bool $include_only_current = false,
         MySqlConnection $conn = null
-    ) : MySqlException|array {
+    ) : array {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -462,52 +434,45 @@ final class SchoolYear extends BaseObject {
 
         // realiza la consulta
         $resultset = $conn->query($query, $param_list);
-        
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // procesa los registros
-            foreach ($resultset as $row) {
-                $level = find_item(
-                    'code', 
-                    $row['education_level'], 
-                    $education_levels
-                );
+    
+        // procesa los registros
+        foreach ($resultset as $row) {
+            $level = find_item(
+                'code', 
+                $row['education_level'], 
+                $education_levels
+            );
 
-                // agrega el registro al arreglo
-                $result[] = new MonthlyFee(
-                    $row['fee'],
-                    $this,
-                    $row['concept'],
-                    $row['month'],
-                    $row['due_date'],
-                    $row['is_vacation'],
-                    $level,
-                    $row['cost']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+            // agrega el registro al arreglo
+            $result[] = new MonthlyFee(
+                $row['fee'],
+                $this,
+                $row['concept'],
+                $row['month'],
+                $row['due_date'],
+                $row['is_vacation'],
+                $level,
+                $row['cost']
+            );
         }
 
         return $result;
     }
 
     /**
-     * Obtiene las cuotas de mensualidad pertenecientes al ciclo escolar.
+     * Obtiene las cuotas de papeleria perteneciente al ciclo escolar.
      * @param string $education_level_code Nivel educativo. Si es null, devuelve
      * las cuotas para todos los niveles educativos
      * @param int $grade Grado. Si es null, devuelve las cuotas para todos los 
      * grados.
      * @param MySqlConnection|null $conn Conexión previamente iniciada.
-     * @return MySqlException|array|StationeryFee|null
+     * @return array|StationeryFee|null
      */
     public function get_stationery_fee(
         string $education_level_code = null,
         int $grade = null,
         MySqlConnection $conn = null
-    ) : MySqlException|array|StationeryFee|null {
+    ) : array|StationeryFee|null {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -536,30 +501,23 @@ final class SchoolYear extends BaseObject {
         // realiza la consulta
         $resultset = $conn->query($query, $param_list);
         
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // procesa los registros
-            foreach ($resultset as $row) {
-                $level = find_item(
-                    'code', 
-                    $row['education_level'], 
-                    $education_levels
-                );
+        // procesa los registros
+        foreach ($resultset as $row) {
+            $level = find_item(
+                'code', 
+                $row['education_level'], 
+                $education_levels
+            );
 
-                // agrega el registro al arreglo
-                $result[] = new StationeryFee(
-                    $row['fee'],
-                    $this,
-                    $row['concept'],
-                    $level,
-                    $row['grade'],
-                    $row['cost']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+            // agrega el registro al arreglo
+            $result[] = new StationeryFee(
+                $row['fee'],
+                $this,
+                $row['concept'],
+                $level,
+                $row['grade'],
+                $row['cost']
+            );
         }
 
         if (is_array($result) && count($result) == 1) {
@@ -577,13 +535,13 @@ final class SchoolYear extends BaseObject {
      * cuotas de todos los tipos de uniformes.
      * grados.
      * @param MySqlConnection|null $conn Conexión previamente iniciada.
-     * @return MySqlException|array|UniformFee|null
+     * @return array|UniformFee|null
      */
     public function get_uniform_fee(
         string $education_level_code = null,
         int $uniform_type_number = null,
         MySqlConnection $conn = null
-    ) : MySqlException|array|UniformFee|null {
+    ) : array|UniformFee|null {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -612,37 +570,30 @@ final class SchoolYear extends BaseObject {
 
         // realiza la consulta
         $resultset = $conn->query($query, $param_list);
-        
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // procesa los registros
-            foreach ($resultset as $row) {
-                $level = find_item(
-                    'code', 
-                    $row['education_level'], 
-                    $education_levels
-                );
-                $type = find_item(
-                    'number',
-                    $row['type'],
-                    $uniform_types
-                );
+    
+        // procesa los registros
+        foreach ($resultset as $row) {
+            $level = find_item(
+                'code', 
+                $row['education_level'], 
+                $education_levels
+            );
+            $type = find_item(
+                'number',
+                $row['type'],
+                $uniform_types
+            );
 
-                // agrega el registro al arreglo
-                $result[] = new UniformFee(
-                    $row['fee'],
-                    $this,
-                    $row['concept'],
-                    $row['size'],
-                    $type,
-                    $level,
-                    $row['cost']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+            // agrega el registro al arreglo
+            $result[] = new UniformFee(
+                $row['fee'],
+                $this,
+                $row['concept'],
+                $row['size'],
+                $type,
+                $level,
+                $row['cost']
+            );
         }
 
         if (is_array($result) && count($result) == 1) {
@@ -684,12 +635,12 @@ final class SchoolYear extends BaseObject {
      * @param string $school_year_code Código del ciclo escolar. Si es nulo, 
      * devuelve el ciclo escolar actual.
      * @param MySqlConnection $conn Conexión previamente iniciada
-     * @return SchoolYear|MySqlException
+     * @return SchoolYear
      */
     public static function get(
         string $school_year_code = null,
         MySqlConnection $conn = null
-    ) : SchoolYear|MySqlException|null {
+    ) : SchoolYear|null {
         // declara una variable para almacenar el resultado
         $result = null;
 
@@ -712,24 +663,17 @@ final class SchoolYear extends BaseObject {
             $resultset = $conn->query(self::$select, $param_list);
         }
 
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // verifica si el arreglo contiene un elemento
-            if (count($resultset) == 1) {
-                // procesa el resultado obtenido
-                $row = $resultset[0];
+        // verifica si el arreglo contiene un elemento
+        if (count($resultset) == 1) {
+            // procesa el resultado obtenido
+            $row = $resultset[0];
 
-                // agrega el registro al arreglo
-                $result[] = new SchoolYear(
-                    $row['code'],
-                    $row['starting_date'],
-                    $row['ending_date']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+            // agrega el registro al arreglo
+            $result[] = new SchoolYear(
+                $row['code'],
+                $row['starting_date'],
+                $row['ending_date']
+            );
         }
 
         if (is_array($result) && count($result) == 1) {
@@ -742,11 +686,11 @@ final class SchoolYear extends BaseObject {
     /**
      * Obtiene todos los ciclos escolares registrados.
      * @param MySqlConnection $conn Conexión previamente iniciada
-     * @return array|MySqlException
+     * @return array
      */
     public static function get_all(
         MySqlConnection $conn = null
-    ) : array|MySqlException {
+    ) : array {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -759,21 +703,14 @@ final class SchoolYear extends BaseObject {
         // realiza la consulta
         $resultset = $conn->query(self::$select_all);
 
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // procesa los registros
-            foreach ($resultset as $row) {
-                // agrega el registro al arreglo
-                $result[] = new SchoolYear(
-                    $row['code'],
-                    $row['starting_date'],
-                    $row['ending_date']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $result[] = new SchoolYear(
+                $row['code'],
+                $row['starting_date'],
+                $row['ending_date']
+            );
         }
 
         return $result;

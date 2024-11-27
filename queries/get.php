@@ -12,7 +12,7 @@
 require __DIR__ . '/../functions/query_response.php';
 require __DIR__ . '/../models/school_year.php';
 
-// establece el tipo de respuesta como archivo JSON
+// establece el tipo de respuesta en fomato JSON
 header('Content-Type: text/json');
 // declara un objeto para almacenar la respuesta
 $response = null;

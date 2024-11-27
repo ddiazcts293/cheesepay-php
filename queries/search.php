@@ -14,7 +14,7 @@ require __DIR__ . '/../functions/query_response.php';
 require __DIR__ . '/../dtos/found_student.php';
 require __DIR__ . '/../dtos/found_tutor.php';
 
-// establece el tipo de respuesta como archivo JSON
+// establece el tipo de respuesta en fomato JSON
 header('Content-Type: text/json');
 // declara una variable para almacenar la respuesta
 $response = null;

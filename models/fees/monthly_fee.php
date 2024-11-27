@@ -72,12 +72,12 @@ final class MonthlyFee extends Fee {
      * actual.
      * @param string $education_level_code Código del nivel educativo
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return MonthlyFee|null|MySqlException
+     * @return MonthlyFee|null
      */
     public static function get_next(
         string $education_level_code,
         MySqlConnection $conn = null
-    ) : MonthlyFee|null|MySqlException {
+    ) : MonthlyFee|null {
         // declara una variable para almacenar el resultado
         $result = null;
 
@@ -94,31 +94,24 @@ final class MonthlyFee extends Fee {
         // resaliza la consulta
         $resultset = $conn->query(self::$select_next, $param_list);
         
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // verifica si el arreglo contiene un elemento
-            if (count($resultset) == 1) {
-                // procesa el resultado obtenido
-                $row = $resultset[0];
-                $level = EducationLevel::get($education_level_code);
-                $year = SchoolYear::get();
+        // verifica si el arreglo contiene un elemento
+        if (count($resultset) == 1) {
+            // procesa el resultado obtenido
+            $row = $resultset[0];
+            $level = EducationLevel::get($education_level_code);
+            $year = SchoolYear::get();
 
-                // agrega el registro al arreglo
-                $result = new MonthlyFee(
-                    $row['fee'], 
-                    $year,
-                    $row['concept'],
-                    $row['month'],
-                    $row['due_date'],
-                    $row['is_vacation'],
-                    $level,
-                    $row['cost']
-                );
-            }
-        }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
+            // agrega el registro al arreglo
+            $result = new MonthlyFee(
+                $row['fee'], 
+                $year,
+                $row['concept'],
+                $row['month'],
+                $row['due_date'],
+                $row['is_vacation'],
+                $level,
+                $row['cost']
+            );
         }
         
         return $result;

@@ -43,12 +43,12 @@ final class Gender extends BaseObject {
      * @param string $code Código del género. Si se omite, devuelve todos los 
      * géneros presentes.
      * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return MySqlException|array
+     * @return array
      */
     public static function get(
         string $code = null,
         MySqlConnection $conn = null
-    ) : MySqlException|array {
+    ) : array {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -70,22 +70,15 @@ final class Gender extends BaseObject {
             $resultset = $conn->query(self::$select_all);
         }
 
-        // verifica si se obtuvo un arreglo
-        if (is_array($resultset)) {
-            // procesa los registros
-            foreach ($resultset as $row) {
-                // agrega el registro al arreglo
-                $result[] = new Gender(
-                    $row['code'],
-                    $row['description']
-                );
-            }
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $result[] = new Gender(
+                $row['code'],
+                $row['description']
+            );
         }
-        // de lo contrario, se asume que la operación devolvió un error
-        else {
-            $result = $resultset;
-        }
-
+    
         return $result;
     }
 }

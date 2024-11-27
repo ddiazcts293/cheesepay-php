@@ -6,51 +6,92 @@ require_once __DIR__ . '/gender.php';
 require_once __DIR__ . '/tutor.php';
 require_once __DIR__ . '/group.php';
 require_once __DIR__ . '/person.php';
+require_once __DIR__ . '/payment.php';
 
 final class Student extends Person {
     private static $select = 'SELECT
-            a.matricula,
-            a.nombre_de_pila,
-            a.apellido_paterno,
-            a.apellido_materno,
-            g.codigo,
-            g.descripcion,
-            a.curp,
-            a.nss,
-            a.fecha_nacimiento,
-            a.direccion_calle,
-            a.direccion_numero,
-            a.direccion_colonia,
-            a.direccion_cp,
-            a.fecha_alta,
-            a.fecha_baja,
-            e.numero,
-            e.descripcion
+            a.matricula AS student_id,
+            a.nombre_de_pila AS name,
+            a.apellido_paterno AS first_surname,
+            a.apellido_materno AS second_surname,
+            g.codigo AS gender_id,
+            g.descripcion AS gender_name,
+            a.curp AS curp,
+            a.nss AS ssn,
+            a.fecha_nacimiento AS birth_date,
+            a.direccion_calle AS address_street,
+            a.direccion_numero AS address_number,
+            a.direccion_colonia AS address_district,
+            a.direccion_cp AS address_zip,
+            a.fecha_alta AS enrollment_date,
+            a.fecha_baja AS withdrawal_date,
+            e.numero AS status_id,
+            e.descripcion AS status_name
         FROM alumnos AS a
         INNER JOIN generos AS g ON g.codigo = a.genero
         INNER JOIN estados_inscripcion AS e ON e.numero = a.estado
         WHERE a.matricula = ?';
 
-    private static $select_tutors = 'SELECT
-            tutor AS number,
-            parentesco AS relationship,
-            nombre_de_pila AS name,
-            apellido_paterno AS first_surname,
-            apellido_materno AS last_surname,
-            rfc,
-            email,
-            telefono AS phone_number
-        FROM vw_tutores_alumnos
-        WHERE alumno = ?';
+    private static $select_tutors = 
+        'SELECT
+             ta.tutor AS tutor_id,
+             ta.parentesco AS relationship_id,
+             p.descripcion AS relationship_name,
+             ta.nombre_de_pila AS name,
+             ta.apellido_paterno AS first_surname,
+             ta.apellido_materno AS last_surname,
+             ta.rfc AS rfc,
+             ta.email AS email,
+             ta.telefono AS phone_number
+         FROM vw_tutores_alumnos AS ta
+         INNER JOIN parentescos AS p ON p.numero = ta.parentesco
+         WHERE alumno = ?';
 
     private static $select_groups = 
         'SELECT
-            grupo AS number,
-            grado AS grade,
-            letra AS letter,
-            ciclo AS school_year,
-            nivel_educativo AS education_level
-         FROM vw_grupo_alumnos
+             ga.grupo AS group_id,
+             ga.grado AS grade,
+             ga.letra AS letter,
+             ga.ciclo AS school_year_id,
+             ce.fecha_inicio AS school_year_starting_date,
+             ce.fecha_fin AS school_year_ending_date,
+             ne.codigo AS education_level_id,
+             ne.descripcion AS education_level_name,
+             ne.edad_minima AS education_level_min_age,
+             ne.edad_maxima AS education_level_max_age,
+             ne.cantidad_grados AS education_level_grade_count
+         FROM vw_grupo_alumnos AS ga
+         INNER JOIN ciclos_escolares AS ce ON ga.ciclo = ce.codigo
+         INNER JOIN niveles_educativos AS ne ON ga.nivel_educativo = ne.codigo
+         WHERE ga.alumno = ?';
+        
+    private static $select_current_group =
+        'SELECT
+             ga.grupo AS group_id,
+             ga.grado AS grade,
+             ga.letra AS letter,
+             ga.ciclo AS school_year_id,
+             ce.fecha_inicio AS school_year_starting_date,
+             ce.fecha_fin AS school_year_ending_date,
+             ne.codigo AS education_level_id,
+             ne.descripcion AS education_level_name,
+             ne.edad_minima AS education_level_min_age,
+             ne.edad_maxima AS education_level_max_age,
+             ne.cantidad_grados AS education_level_grade_count
+         FROM vw_grupo_alumnos AS ga
+         INNER JOIN ciclos_escolares AS ce ON ga.ciclo = ce.codigo
+         INNER JOIN niveles_educativos AS ne ON ga.nivel_educativo = ne.codigo
+         WHERE ga.alumno = ?
+         AND ga.ciclo = fn_obtener_ciclo_escolar_actual()';
+
+    private static $select_payments = 
+        'SELECT 
+             folio AS payment_id,
+             fecha AS date,
+             tutor AS tutor_id,
+             total AS total_amount,
+             cantidad_cuotas AS fee_count
+         FROM pagos
          WHERE alumno = ?';
 
     private static $insert = 
@@ -159,199 +200,194 @@ final class Student extends Person {
 
     /* Lógica de negocio */
 
-    public function get_tutors(): array {
-        // declare variable to store the retrieved objects
+    public function get_tutors(MySqlConnection $conn = null): array {
+        // declara un arreglo vacío
         $tutors = [];
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select_tutors);
-        // bind param
-        $stmt->bind_param('s', $this->student_id);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result(
-            $tutor_number,
-            $tutor_name,
-            $tutor_first_surname,
-            $tutor_second_surname,
-            $rfc,
-            $email,
-            $phone_number,
-            $profession,
-            $relationship_number,
-            $relationship_description
-        );
+        // verifica si se recibió una conexión
+        if ($conn === null) {
+            $conn = new MySqlConnection();
+        }
 
-        // read result
-        while ($stmt->fetch()) {
-            array_push(
-                $tutors, 
-                new Tutor(
-                    $tutor_number,
-                    $tutor_name,
-                    $tutor_first_surname,
-                    $tutor_second_surname,
-                    $rfc,
-                    $email,
-                    $phone_number,
-                    new Relationship(
-                        $relationship_number, 
-                        $relationship_description
-                    )
+        // crea una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->student_id);
+        
+        // realiza la consulta
+        $resultset = $conn->query(self::$select_tutors, $param_list);
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $tutors[] = new Tutor(
+                $row['tutor_id'],
+                $row['name'],
+                $row['first_surname'],
+                $row['last_surname'],
+                $row['rfc'],
+                $row['email'],
+                $row['phone_number'],
+                new Relationship(
+                    $row['relationship_id'],
+                    $row['relationship_name']
                 )
             );
         }
-
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
 
         return $tutors;
     }
 
-    public function get_groups(): array {
-        // declare variable to store the retrieved objects
-        $groups = [];
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select_groups);
-        // bind param
-        $stmt->bind_param('s', $this->student_id);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result(
-            $number,
-            $grade,
-            $letter,
-            $school_year_code,
-            $school_year_starting_date,
-            $school_year_ending_date,
-            $education_level_code,
-            $education_level_description,
-            $education_level_minimum_age,
-            $education_level_maximum_age,
-            $education_level_grade_count
-        );
+    public function get_payments(MySqlConnection $conn = null): array {
+        // declara un arreglo vacío
+        $payments = [];
+        // verifica si se recibió una conexión
+        if ($conn === null) {
+            $conn = new MySqlConnection();
+        }
 
-        // read result
-        while ($stmt->fetch()) {
-            array_push(
-                $groups, 
-                new Group(
-                    $number,
-                    $grade,
-                    $letter,
-                    new SchoolYear(
-                        $school_year_code,
-                        $school_year_starting_date,
-                        $school_year_ending_date
-                    ),
-                    new EducationLevel(   
-                        $education_level_code,
-                        $education_level_description,
-                        $education_level_minimum_age,
-                        $education_level_maximum_age,
-                        $education_level_grade_count
-                    )
+        // crea una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->student_id);
+        
+        // realiza la consulta
+        $resultset = $conn->query(self::$select_payments, $param_list);
+        
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $payments[] = new Payment(
+                $row['payment_id'],
+                Tutor::get($row['tutor_id'], $conn),
+                $this,
+                $row['date'],
+                $row['total_amount'],
+                $row['fee_count']
+            );
+        }
+
+        return $payments;
+    }
+
+    public function get_groups(MySqlConnection $conn = null): array {
+        // declara un arreglo vacío
+        $groups = [];
+        // verifica si se recibió una conexión
+        if ($conn === null) {
+            $conn = new MySqlConnection();
+        }
+
+        // crea una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->student_id);
+        
+        // realiza la consulta
+        $resultset = $conn->query(self::$select_groups, $param_list);
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $groups[] = new Group(
+                $row['group_id'],
+                $row['grade'],
+                $row['letter'],
+                new SchoolYear(
+                    $row['school_year_id'],
+                    $row['school_year_starting_date'],
+                    $row['school_year_ending_date']
+                ),
+                new EducationLevel(
+                    $row['education_level_id'],
+                    $row['education_level_name'],
+                    $row['education_level_min_age'],
+                    $row['education_level_max_age'],
+                    $row['education_level_grade_count']
                 )
             );
         }
 
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
-
         return $groups;
     }
 
-    public function get_current_group() : Group|null {
-        $groups = $this->get_groups();
-        if (count($groups) > 0) {
-            return $groups[0];
-        } else {
-            return null;
+    public function get_current_group(MySqlConnection $conn = null) : Group|null {
+        // declara una variable para almacenar el grupo
+        $group = null;
+        // verifica si se recibió una conexión
+        if ($conn === null) {
+            $conn = new MySqlConnection();
         }
+
+        // crea una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->student_id);
+        
+        // realiza la consulta
+        $resultset = $conn->query(self::$select_current_group, $param_list);
+        // procesa los registros
+
+        if (count($resultset) == 1) {
+            // obtiene la fila
+            $row = $resultset[0];
+            // crea un nuevo objeto grupo con los datos obtenidos
+            $group = new Group(
+                $row['group_id'],
+                $row['grade'],
+                $row['letter'],
+                new SchoolYear(
+                    $row['school_year_id'],
+                    $row['school_year_starting_date'],
+                    $row['school_year_ending_date']
+                ),
+                new EducationLevel(
+                    $row['education_level_id'],
+                    $row['education_level_name'],
+                    $row['education_level_min_age'],
+                    $row['education_level_max_age'],
+                    $row['education_level_grade_count']
+                )
+            );
+        }
+
+        return $group;
     }
 
-    public function update_address(
-        string $street, 
-        string $number,
-        string $district,
-        string $zip_code
-    ) : bool {
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // begin a transaction
-        $conn->begin_transaction(MYSQLI_TRANS_START_READ_WRITE);
-        // prepare statement
-        $stmt = $conn->prepare(self::$update_address);
-        // bind params
-        $stmt->bind_param(
-            'sssss', 
-            $street,
-            $number,
-            $district,
-            $zip_code,
-            $this->student_id,
-        );
-        // execute statement
-        $success = $stmt->execute();
-        // commit the transaction
-        $conn->commit();
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
-
-        // check if the update was successful
-        if ($success) {
-            // update object attributes
-            $this->street = $street;
-            $this->number = $number;
-            $this->district = $district;
-            $this->zip_code = $zip_code;
+    public function update_address(MySqlConnection $conn = null) : void {
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
         }
 
-        return $success;
+        // crea la lista de parámetros con los datos provistos
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->address_street);
+        $param_list->add('s', $this->address_number);
+        $param_list->add('s', $this->address_district);
+        $param_list->add('s', $this->address_zip);
+        $param_list->add('s', $this->student_id);
+        
+        // ejecuta la consulta
+        $conn->query(self::$update_address, $param_list);        
     }
 
-    public function update_ssn(string $ssn) : bool {
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // begin a transaction
-        $conn->begin_transaction(MYSQLI_TRANS_START_READ_WRITE);
-        // prepare statement
-        $stmt = $conn->prepare(self::$update_ssn);
-        // bind params
-        $stmt->bind_param('ss', $ssn, $this->student_id);
-        // execute statement
-        $success = $stmt->execute();
-        // commit the transaction
-        $conn->commit();
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
-
-        // checks if the update was successful
-        if ($success) {
-            // update object attributes
-            $this->ssn = $ssn;
+    public function update_ssn(MySqlConnection $conn = null) : void {
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
         }
 
-        return $success;
+        // crea la lista de parámetros con los datos provistos
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->ssn);
+        $param_list->add('s', $this->student_id);
+
+        //ejecuta la consulta
+        $conn->query(self::$update_ssn, $param_list);
     }
 
     public function to_array(): array {
-        return [
+        $array = [
             'student_id' => $this->student_id,
-            'gender' => $this->gender?->to_array(),
+            'name' => $this->name,
+            'first_surname' => $this->first_surname,
+            'second_surname' => $this->second_surname,
             'curp' => $this->curp,
             'ssn' => $this->ssn,
             'birth_date' => $this->birth_date,
@@ -360,9 +396,18 @@ final class Student extends Person {
             'address_district' => $this->address_district,
             'address_zip' => $this->address_zip,
             'enrollment_date' => $this->enrollment_date,
-            'withdrawal_date' => $this->withdrawal_date,
-            'enrollment_status' => $this->enrollment_status?->to_array(),
+            'withdrawal_date' => $this->withdrawal_date
         ];
+
+        if ($this->gender !== null) {
+            $array['gender'] = $this->gender->to_array();
+        }
+        
+        if ($this->enrollment_status !== null) {
+            $array['enrollment_status'] = $this->enrollment_status->to_array();
+        }
+
+        return $array;
     }
 
     // constructor
@@ -385,11 +430,6 @@ final class Student extends Person {
             $this->curp = func_get_arg(5);
             $this->ssn = func_get_arg(6);
             $this->birth_date = func_get_arg(7);
-        } else {
-            $this->gender = null;
-            $this->curp = '';
-            $this->ssn = null;
-            $this->birth_date = '';
         }
 
         if ($num_args >= 12) {
@@ -397,83 +437,64 @@ final class Student extends Person {
             $this->address_number = func_get_arg(9);
             $this->address_district = func_get_arg(10);
             $this->address_zip = func_get_arg(11);
-        } else {
-            $this->address_street = '';
-            $this->address_number = '';
-            $this->address_district = '';
-            $this->address_zip = '';
         }
 
         if ($num_args == 15) {
             $this->enrollment_date = func_get_arg(12);
             $this->withdrawal_date = func_get_arg(13);
             $this->enrollment_status = func_get_arg(14);
-        } else {
-            $this->enrollment_date = '';
-            $this->withdrawal_date = null;
-            $this->enrollment_status = null;
-        }
+        } 
     }
 
-    public static function get(string $student_id): Student|null {
-        // declare variable to store the retrieved object
-        $student = null;
-        // open a new connection
-        $conn = MySqlConnection::open_connection();
-        // prepare statement
-        $stmt = $conn->prepare(self::$select);
-        // bind param
-        $stmt->bind_param('s', $student_id);
-        // execute statement
-        $stmt->execute();
-        // bind results
-        $stmt->bind_result(
-            $student_id,
-            $name,
-            $first_surname,
-            $second_surname,
-            $gender_code,
-            $gender_description,
-            $curp,
-            $ssn,
-            $birth_date,
-            $address_street,
-            $address_number,
-            $address_district,
-            $address_zip,
-            $enrollment_date,
-            $withdrawal_date,
-            $status_number,
-            $status_description
-        );
+    public static function get(
+        string $student_id, 
+        MySqlConnection $conn = null
+    ): Student|null {
+        // declara una variable para almacenar el resultado
+        $result = null;
 
-        // read result
-        if ($stmt->fetch()) {
-            $student = new Student(
-                $student_id,
-                $name,
-                $first_surname,
-                $second_surname,
-                new Gender($gender_code, $gender_description),
-                $curp,
-                $ssn,
-                $birth_date,
-                $address_street,
-                $address_number,
-                $address_district,
-                $address_zip,
-                $enrollment_date,
-                $withdrawal_date,
-                new EnrollmentStatus($status_number, $status_description)
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
+        }
+
+        // crea una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $student_id);
+        
+        // realiza la consulta
+        $resultset = $conn->query(self::$select, $param_list);
+
+        if (count($resultset) == 1) {
+            $row = $resultset[0];
+
+            $result = new Student(
+                $row['student_id'],
+                $row['name'],
+                $row['first_surname'],
+                $row['second_surname'],
+                new Gender(
+                    $row['gender_id'],
+                    $row['gender_name']
+                ),
+                $row['curp'],
+                $row['ssn'],
+                $row['birth_date'],
+                $row['address_street'],
+                $row['address_number'],
+                $row['address_district'],
+                $row['address_zip'],
+                $row['enrollment_date'],
+                $row['withdrawal_date'],
+                new EnrollmentStatus(
+                    $row['status_id'],
+                    $row['status_name']
+                )
             );
         }
 
-        // deallocate resources
-        $stmt->close();
-        // close connection
-        $conn->close();
-
-        return $student;
+        return $result;
     }
 
     public static function register(
@@ -489,14 +510,14 @@ final class Student extends Person {
         string $address_district,
         string $address_zip,
         MySqlConnection $conn = null
-    ) : MySqlException|Student {
-        //declara una variable para almacenar la matrícula
+    ) : Student {
         // verifica si se recibió una conexión previamente iniciada
         if ($conn === null) {
             // crea una nueva conexión
             $conn = new MySqlConnection();
         }
 
+        // crea la lista de parámetros con los datos provistos
         $param_list = new MySqlParamList();
         $param_list->add('s', $name);
         $param_list->add('s', $first_surname);
@@ -511,15 +532,12 @@ final class Student extends Person {
         $param_list->add('s', $address_zip);
 
         // realiza la llamada al procedimiento
-        $resultset = $conn->query(self::$insert, $param_list);
-        // verifica si se produjo una excepción al insertar
-        if ($resultset instanceof MySqlException) {
-            return $resultset;
-        }
-
+        $conn->query(self::$insert, $param_list);
+        
         // consulta el valor de la matrícula dado por el parámetro de salida
         $resultset = $conn->query('SELECT @student_id');
         $student_id = $resultset[0]['@student_id'];
+
         // obtiene el genero del alumno
         $gender = Gender::get($gender, $conn);
 
