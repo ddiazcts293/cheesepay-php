@@ -1,5 +1,22 @@
 <!DOCTYPE html>
     <head>
+        <?php
+            // inicia una sesión
+            session_start();
+            $user = null;
+
+            // verifica si el token de autentificación está fijado
+            if (isset($_SESSION['token'])) {
+                // valida el token para obtener el usuario asociado
+                require_once __DIR__ . '/models/access/user.php';
+                $user = User::validate_token($_SESSION['token']);
+            }
+
+            // verifica si no se localizó a un usuario con inicio de sesión
+            if ($user === null) {
+                header('Location: login.php');
+            }
+        ?>
         <!--title-->
         <title>CheesePay</title>
         <!--javascript-->
@@ -22,22 +39,10 @@
             ?>
             <p><a href="registration_panel.php">Panel de registro de nuevos alumnos</a></p>
             <p><a href="student_panel.php">Panel de información de alumno</a></p>
-            <p><a href="group_query.php">Consultar grupos</a></p>
-            <p><a href="fee_query.php">Consultar costos de cuotas</a></p>
+            <p><a href="group_query_panel.php">Consultar grupos</a></p>
+            <p><a href="fee_query_panel.php">Consultar costos de cuotas</a></p>
             <p><a href="control_panel.php">Panel de control</a></p>
-
-            <p>
-                <input type="text" id="student_id">
-                <button onclick="search()">Buscar</button>
-            </p>
+            <p><a href="actions/sign_out.php">Salir</a></p>
         </div>
-        <script>
-            function search() {
-                let student_id = document.getElementById('student_id').value;
-                let url = '/student_panel.php?student_id=' + student_id;
-
-                window.location = url;
-            }
-        </script>
     </body>
 </html>

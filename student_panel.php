@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="es">
     <?php
+        // inicia una sesión
+        session_start();
+        $user = null;
+
+        // verifica si el token de autentificación está fijado
+        if (isset($_SESSION['token'])) {
+            // valida el token para obtener el usuario asociado
+            require_once __DIR__ . '/models/access/user.php';
+            $user = User::validate_token($_SESSION['token']);
+        }
+
+        // verifica si no se localizó a un usuario con inicio de sesión
+        if ($user === null) {
+            header('Location: login.php');
+        }
+        
         require __DIR__ . '/models/student.php';
 
         // declara una variable para almacenar la información del alumno

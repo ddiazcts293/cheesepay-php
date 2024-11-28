@@ -13,17 +13,15 @@ class Fee extends BaseObject {
          FROM vw_resumenes_cuotas
          WHERE cuota = ?';
 
-    private static $select_types = 
-        'SELECT
-            numero AS fee,
-            (inscripcion IS NOT NULL) AS is_enrollment,
-            (mensualidad IS NOT NULL) AS is_monthly,
-            (papeleria IS NOT NULL) AS is_stationery,
-            (uniforme IS NOT NULL) AS is_uniform,
-            (mantenimiento IS NOT NULL) AS is_maintenance,
-            (evento IS NOT NULL) AS is_event
-        FROM cuotas
-        WHERE numero';
+    private static $select_payments = 
+        'SELECT 
+            p.folio AS payment,
+            p.alumno AS student,
+            p.tutor AS tutor,
+            p.fecha AS date
+         FROM pagos AS p
+         INNER JOIN pago_cuotas AS pc ON p.folio = pc.pago
+         WHERE pc.cuota = ?';
 
     // attributes
     protected $number;
@@ -115,16 +113,10 @@ class Fee extends BaseObject {
         return $result;
     }
 
-    /**
-     * Obtiene el tipo de la cuota asociada al número dado.
-     * @param int $fee_number Número de la cuota
-     * @param MySqlConnection|null $conn Conexión previamente iniciada
-     * @return array
-     */
-    public static function get_fee_type(
-        int|array $fee_number, 
+    public static function get_payments(
+        int $fee_number,
         MySqlConnection $conn = null
-    ) : null|array {
+    ) : array {
         // declara una variable para almacenar el resultado
         $result = [];
 
@@ -136,52 +128,22 @@ class Fee extends BaseObject {
 
         // crea una lista de parámetros
         $param_list = new MySqlParamList();
-        $query = self::$select_types;
-
-        if (is_array($fee_number)) {
-            $query .= ' IN (';
-            
-            foreach ($fee_number as $f) {
-                $param_list->add('i', $f);
-                $query .= '?,';
-            }
-            
-            $query = trim($query, ',');
-            $query .= ')';
-        } else {
-            $param_list->add('i', $fee_number);
-            $query .= ' = ?';
-        }
+        $param_list->add('i', $fee_number);
 
         // resaliza la consulta
-        $resultset = $conn->query($query, $param_list);
-
-        // procesa los registros
+        $resultset = $conn->query(self::$select_payments, $param_list);
+    
+        // verifica si el arreglo contiene un elemento
         foreach ($resultset as $row) {
-            $type = '';
-            $fee = $row['fee'];
-            
-            if ($row['is_enrollment']) {
-                $type = 'enrollment';
-            } else if ($row['is_monthly']) {
-                $type = 'monthly';
-            } else if ($row['is_stationery']) {
-                $type = 'stationery';
-            } else if ($row['is_uniform']) {
-                $type = 'uniform';
-            } else if ($row['is_maintenance']) {
-                $type = 'maintenance';
-            } else if ($row['is_event']) {
-                $type = 'event';
-            } 
-
-            $result[] = [ $row['fee'] => $fee, 'type' => $type ];
+            // agrega el registro al arreglo
+            $result[] = new Payment(
+                $row['payment'],
+                Tutor::get($row['tutor'], $conn),
+                Student::get($row['student'], $conn),
+                $row['date']
+            );
         }
 
-        if (is_array($result) && count($result) == 1) {
-            return $result[0];
-        }
-        
         return $result;
     }
 }

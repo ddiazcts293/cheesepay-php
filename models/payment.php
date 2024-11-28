@@ -5,7 +5,7 @@ require_once __DIR__ . '/student.php';
 require_once __DIR__ . '/tutor.php';
 require_once __DIR__ . '/fees/fee.php';
 
-final class Payment {
+final class Payment extends BaseObject {
     private static $select = 
         'SELECT
             tutor AS tutor_id,

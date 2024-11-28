@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="es">
     <?php
+        // inicia una sesión
+        session_start();
+        $user = null;
+
+        // verifica si el token de autentificación está fijado
+        if (isset($_SESSION['token'])) {
+            // valida el token para obtener el usuario asociado
+            require_once __DIR__ . '/models/access/user.php';
+            $user = User::validate_token($_SESSION['token']);
+        }
+
+        // verifica si no se localizó a un usuario con inicio de sesión
+        if ($user === null) {
+            header('Location: login.php');
+        }
+
         /**
          * El panel puede actuar de tres maneras:
          * 1. Cuando se va a registrar a un alumno nuevo
@@ -279,8 +295,8 @@
                         </div>
                     </div>
                     <div class="card">
+                        <!--Selectores de tipo de cuotas-->
                         <?php if (!$is_read_only) { ?>
-                            <!--Sección de cuotas en el pago-->
                             <div class="card-header">
                                 <!--Selectores de cuotas-->
                                 <div class="control-row">

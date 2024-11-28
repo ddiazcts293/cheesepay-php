@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
     // verifica si los parámetros de tipo y consulta están definidos
     if (isset($_GET['type'], $_GET['q'])) {
         // obtiene y limpia los parámetros recibidos
-        $type = $_GET['type'];
+        $type = sanitize($_GET['type']);
         $term = sanitize($_GET['q']);
 
         // verifica si el tipo de búsqueda corresponde a alumno o tutor

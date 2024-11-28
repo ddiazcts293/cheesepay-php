@@ -68,7 +68,7 @@ function retrieveFee() {
     };
 
     // establece el tipo de método y la URL de la petición
-    xhr.open('GET', 'queries/get.php?type=fee&id=' + feeId);
+    xhr.open('GET', 'queries/get_fee.php?id=' + feeId);
     // envia la petición
     xhr.send();
 }
