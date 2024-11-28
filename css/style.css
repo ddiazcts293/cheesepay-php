@@ -102,11 +102,7 @@ header {
     height: 100%;
 }
 
-.menuItemText {
-    color: rgb(52, 51, 51);
-}
-
-.user-photo, #user-icons {
+.user-photo, .user-icons {
     position: relative;
     float: left;
     width: 20px;
@@ -115,17 +111,15 @@ header {
     display: flex;
     align-items: center;
     justify-content: left;
-
 }
 
 .user-photo {
     width: 28px;
     height: 28px;
     margin-right: 10px;
-
 }
 
-.user-photo img{
+.user-photo img {
     height: 100%;
     border-radius: 12px;
 }
@@ -145,13 +139,13 @@ header {
     color: #FFF;
 }
 
+/* Menu */
+
 /* Si el menú está visible se ajustan las medidas de la división content */
-#menu.show ~ #content {
-    width: calc(100% - 200px);
+#menu:not([hidden]) ~ #content {
+    width: calc(100% - 216px);
     left: 200px;
 }
-
-/* Menu */
 
 #menu {
     position: fixed;
@@ -160,22 +154,22 @@ header {
     background: var(--menuColor);
     width: 200px;
     height: 100%;
-    display: none;
+    padding: 4px;
 }
 
-.menu-item{
+.menu-item {
     position: relative;
     float: left;
     width: 100%;
     height: 60px;
     background: var(--menuColor);
-    border-bottom: 1px solid #EEE; /*var(--menuItemBorder);*/
+    border-bottom: 1px solid #EEE;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-.menu-elements{
+.menu-elements {
     position: relative;
     float: left;
     width: calc(100% - 20px);
@@ -183,7 +177,7 @@ header {
     background: var(--menuButtonColor);
     border-radius: 8px;
     border: 2px solid #FFF;
-    margin: 5px;
+    margin: 4px;
     display: flex;
     align-items: center;
     justify-content: left;
@@ -206,7 +200,6 @@ header {
     color: var(--menuItemText);
 }
 
-
 .menu-elements label {
     font-size: 10pt;
     color: var(--menuItemText);
@@ -216,11 +209,6 @@ header {
 
 .menu-elements:hover {
     background: var(--menuButtonHover);
-}
-
-/* Mostrar el menú con display:block cuando se activa */
-#menu.show {
-    display: block;
 }
 
 /* Cards */

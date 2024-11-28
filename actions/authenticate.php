@@ -1,8 +1,9 @@
 <?php
 
-require_once __DIR__ . '/../models/access/user.php';
+require __DIR__ . '/../models/access/user.php';
 
 if (isset($_POST['user_id'], $_POST['password'])) {
+    // obtiene los datos provistos
     $user_id = $_POST['user_id'];
     $password = $_POST['password'];
     $user = User::login($user_id, $password);

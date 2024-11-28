@@ -14,6 +14,7 @@
 
         // verifica si no se localizó a un usuario con inicio de sesión
         if ($user === null) {
+            session_destroy();
             header('Location: login.php');
         }
 
@@ -32,7 +33,8 @@
     ?>
     <head>
         <!--title-->
-        <title>Registro de alumno</title>
+        <title>Registro de alumno - CheesePay</title>
+        <link rel="icon" type="image/png" href="favicon.png">
         <!--javascript-->
         <script src="js/fontawesome/solid.js"></script>
         <script src="js/registration_panel.js"></script>
@@ -44,6 +46,7 @@
         <link href="css/controls.css" rel="stylesheet" />
         <link href="css/dialogs.css" rel="stylesheet" />
         <link href="css/alerts.css" rel="stylesheet" />
+        <link href="css/theme.css" rel="stylesheet" />
         <link href="css/fontawesome/fontawesome.css" rel="stylesheet" />
         <link href="css/fontawesome/solid.css" rel="stylesheet" />
         <!--metadata-->
@@ -60,6 +63,79 @@
             // grupos
             const groups = JSON.parse('<?php echo array_to_json($groups); ?>');
         </script>
+        <header>
+            <div class="header-left">
+                <div class="header-menu">
+                    <i id="toggle-menu" class="fas fa-bars"></i>
+                </div>
+                <a class="header-logo" href="index.php">
+                    <img src="images/logo.png">
+                </a>
+            </div>
+            <div class="header-right">
+                <div class="user-photo">
+                    <img>
+                </div>
+                <div class="user-icons">
+                    <a href="user_panel.php">
+                        <i class="fas fa-cog"></i>
+                    </a>
+                    <a href="actions/sign_out.php">
+                        <i class="fas fa-sign-out-alt" ></i>
+                    </a>
+                </div>
+            </div>
+        </header>
+        <div id="menu">
+            <a class="menu-item" href="index.php">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <label>Página principal</label>
+                </div>
+            </a>
+            <a class="menu-item" href="registration_panel.php">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <label>Registrar alumno</label>
+                </div>
+            </a>
+            <a class="menu-item" href="student_panel.php">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <label>Consultar alumno</label>
+                </div>
+            </a>
+            <a class="menu-item" href="group_query_panel.php">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <label>Consultar grupos</label>
+                </div>
+            </a>
+            <a class="menu-item" href="fee_query_panel.php">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-search-dollar"></i>
+                    </div>
+                    <label>Consultar cuotas</label>
+                </div>
+            </a>
+            <a class="menu-item" href="control_panel.php" style="display: none;">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <label>Panel de control</label>
+                </div>
+            </a>
+        </div>
         <div id="content">
             <h1>Registro de alumno</h1>
             <!--Alertas que aparecene en la parte superior-->
@@ -78,6 +154,7 @@
                         <h2>Verificación de CURP</h2>
                     </div>
                     <div class="card-body">
+                        <p>Ingrese la Clave Única de Registro de Población</p>
                         <div class="control-row">
                             <div class="control control-col width-9">
                                 <label for="prevalidation-curp">CURP</label>
@@ -122,7 +199,7 @@
                             </div>
                             <div class="control control-col witdh-6">
                                 <label for="student-group">Grupo</label>
-                                <select id="student-group" name="group_id" required disabled>
+                                <select id="student-group" name="group_id" required disabled oninput="updateSubmitButtonStatus()">
                                     <option value="none">Seleccione uno</option>
                                 </select>
                             </div>
@@ -138,15 +215,15 @@
                         <div class="control-row">
                             <div class="control control-col width-4">
                                 <label for="student-name">Nombre(s)</label>
-                                <input type="text" id="student-name" name="name" required>
+                                <input type="text" id="student-name" name="name" required maxlength="32" minlength="2">
                             </div>
                             <div class="control control-col width-4">
                                 <label for="student-first-surname">Apellido paterno</label>
-                                <input type="text" id="student-first-surname" name="first_surname" required>
+                                <input type="text" id="student-first-surname" name="first_surname" required maxlength="32" minlength="2">
                             </div>
                             <div class="control control-col width-4">
                                 <label for="student-second-surname">Apellido materno</label>
-                                <input type="text" id="student-second-surname" name="second_surname">
+                                <input type="text" id="student-second-surname" name="second_surname" maxlength="32" minlength="2">
                             </div>
                         </div>
                         <div class="control-row">
@@ -156,7 +233,7 @@
                             </div>
                             <div class="control control-col width-3">
                                 <label for="student-gender">Género</label>
-                                <select id="student-gender" name="gender_id" required>
+                                <select id="student-gender" name="gender_id" required oninput="updateSubmitButtonStatus()">
                                     <option value="none">Seleccione uno</option>
                                     <?php foreach ($genders as $gender) {; ?>
                                         <option value="<?php echo $gender->get_code(); ?>">
@@ -171,27 +248,27 @@
                             </div>
                             <div class="control control-col width-3">
                                 <label for="student-ssn">NSS</label>
-                                <input type="text" id="student-ssn" name="ssn">
+                                <input type="text" id="student-ssn" name="ssn" maxlength="11" minlength="11">
                             </div>
                         </div>
                         <div class="control-row">
                             <div class="control control-col width-6">
                                 <label for="student-address-street">Calle</label>
-                                <input type="text" id="student-address-street" name="address_street" maxlength="32" required>
+                                <input type="text" id="student-address-street" name="address_street" maxlength="32" minlength="1" required>
                             </div>
                             <div class="control control-col width-6">
                                 <label for="student-address-number">Número</label>
-                                <input type="text" id="student-address-number" name="address_number" maxlength="12" required>
+                                <input type="text" id="student-address-number" name="address_number" maxlength="12" minlength="1" required>
                             </div>
                         </div>
                         <div class="control-row">
                             <div class="control control-col width-6">
                                 <label for="student-address-district">Colonia</label>
-                                <input type="text" id="student-address-district" name="address_district" maxlength="24" required>
+                                <input type="text" id="student-address-district" name="address_district" maxlength="24" minlength="1" required>
                             </div>
                             <div class="control control-col width-6">
                                 <label for="student-address-zip-code">Código Postal</label>
-                                <input type="text" id="student-address-zip-code" name="address_zip" maxlength="5" required>
+                                <input type="text" id="student-address-zip-code" name="address_zip" maxlength="5" minlength="1" required>
                             </div>
                         </div>
                     </div>
@@ -210,7 +287,7 @@
                             <template id="student-tutor-row-template">
                                 <tr data-row-id="" data-attachment="">
                                     <td data-field-name="relationship">
-                                        <select>
+                                        <select oninput="updateSubmitButtonStatus()">
                                             <option value="none">Seleccione uno</option>
                                             <?php foreach ($relationships as $rel) {; ?>
                                                 <option value="<?php echo $rel->get_number(); ?>">
@@ -238,8 +315,7 @@
                 </div>
                 <!--Botones para confirmar y borrar-->
                 <div class="control-row control-width-4">
-                    <button type="submit">Continuar</button>
-                    <button type="reset">Borrar datos</button>
+                    <button type="submit" id="registration-form-submit" disabled>Continuar</button>
                 </div>
             </form>
             <!--Diálogo para buscar a un tutor-->

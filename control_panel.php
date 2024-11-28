@@ -14,16 +14,18 @@
 
         // verifica si no se localizó a un usuario con inicio de sesión
         if ($user === null) {
+            session_destroy();
             header('Location: login.php');
         }
     ?>
 	<head>
 		<!--title-->
         <title>Panel de Control</title>
+        <link rel="icon" type="image/png" href="favicon.png">
         <!--javascript-->
         <script src="js/fontawesome/solid.js"></script>
-        <script src="js/menuToggle.js"></script>
         <script src="js/control_panel.js"></script>
+        <script src="js/common.js"></script>
         <!--stylesheets-->
         <link href="css/style.css" rel="stylesheet" />
         <link href="css/controls.css" rel="stylesheet" />
@@ -40,72 +42,75 @@
         <header>
             <div class="header-left">
                 <div class="header-menu">
-                    <i class="toggleMenu" class="fas fa-bars"></i>
+                    <i id="toggle-menu" class="fas fa-bars"></i>
                 </div>
                 <a class="header-logo" href="index.php">
-                    <img src="photos/Logo programa Cheese pay.png">
+                    <img src="images/logo.png">
                 </a>
             </div>
             <div class="header-right">
                 <div class="user-photo">
-                    <img src="photos/Palomito.jpeg">
+                    <img>
                 </div>
                 <div class="user-icons">
-                    <i class="fas fa-cog"></i>
-                    <i class="fas fa-globe"></i>
-                    <i class="fas fa-sign-out-alt"></i>
+                    <a href="user_panel.php">
+                        <i class="fas fa-cog"></i>
+                    </a>
+                    <a href="actions/sign_out.php">
+                        <i class="fas fa-sign-out-alt" ></i>
+                    </a>
                 </div>
             </div>
         </header>
         <div id="menu">
-            <div class="menu-item">
+            <a class="menu-item" href="index.php">
                 <div class="menu-elements">
                     <div class="menu-icon">
                         <i class="fas fa-home"></i>
                     </div>
                     <label>Página principal</label>
                 </div>
-            </div>
-            <div class="menu-item">
+            </a>
+            <a class="menu-item" href="registration_panel.php">
                 <div class="menu-elements">
                     <div class="menu-icon">
                         <i class="fas fa-user-plus"></i>
                     </div>
                     <label>Registrar alumno</label>
                 </div>
-            </div>
-            <div class="menu-item">
+            </a>
+            <a class="menu-item" href="student_panel.php">
                 <div class="menu-elements">
                     <div class="menu-icon">
                         <i class="fas fa-search"></i>
                     </div>
                     <label>Consultar alumno</label>
                 </div>
-            </div>
-            <div class="menu-item">
+            </a>
+            <a class="menu-item" href="group_query_panel.php">
                 <div class="menu-elements">
                     <div class="menu-icon">
                         <i class="fas fa-users"></i>
                     </div>
                     <label>Consultar grupos</label>
                 </div>
-            </div>
-            <div class="menu-item">
-                <div class="menu-elements">
-                    <div class="menu-icon">
-                        <i class="fas fa-file-invoice-dollar"></i>
-                    </div>
-                    <label>Realizar pago</label>
-                </div>
-            </div>
-            <div class="menu-item">
+            </a>
+            <a class="menu-item" href="fee_query_panel.php">
                 <div class="menu-elements">
                     <div class="menu-icon">
                         <i class="fas fa-search-dollar"></i>
                     </div>
-                    <label>Consultar pagos</label>
+                    <label>Consultar cuotas</label>
                 </div>
-            </div>
+            </a>
+            <a class="menu-item" href="control_panel.php" style="display: none;">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <label>Panel de control</label>
+                </div>
+            </a>
         </div>
         <div id="content">
             <h1>Panel de control</h1>

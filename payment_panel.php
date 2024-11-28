@@ -14,6 +14,7 @@
 
         // verifica si no se localizó a un usuario con inicio de sesión
         if ($user === null) {
+            session_destroy();
             header('Location: login.php');
         }
 
@@ -178,7 +179,8 @@
     ?>
     <head>
         <!--title-->
-        <title>Panel de pagos</title>
+        <title>Panel de pagos - CheesePay</title>
+        <link rel="icon" type="image/png" href="favicon.png">
         <!--javascript-->
         <script src="js/fontawesome/solid.js"></script>
         <script src="js/payment_panel.js"></script>
@@ -190,6 +192,7 @@
         <link href="css/controls.css" rel="stylesheet" />
         <link href="css/dialogs.css" rel="stylesheet" />
         <link href="css/alerts.css" rel="stylesheet" />
+        <link href="css/theme.css" rel="stylesheet" />
         <link href="css/fontawesome/fontawesome.css" rel="stylesheet" />
         <link href="css/fontawesome/solid.css" rel="stylesheet" />
         <!--metadata-->
@@ -231,6 +234,79 @@
                 const stationeryFee = 0;
             <?php } ?>
         </script>
+        <header>
+            <div class="header-left">
+                <div class="header-menu">
+                    <i id="toggle-menu" class="fas fa-bars"></i>
+                </div>
+                <a class="header-logo" href="index.php">
+                    <img src="images/logo.png">
+                </a>
+            </div>
+            <div class="header-right">
+                <div class="user-photo">
+                    <img>
+                </div>
+                <div class="user-icons">
+                    <a href="user_panel.php">
+                        <i class="fas fa-cog"></i>
+                    </a>
+                    <a href="actions/sign_out.php">
+                        <i class="fas fa-sign-out-alt" ></i>
+                    </a>
+                </div>
+            </div>
+        </header>
+        <div id="menu">
+            <a class="menu-item" href="index.php">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <label>Página principal</label>
+                </div>
+            </a>
+            <a class="menu-item" href="registration_panel.php">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <label>Registrar alumno</label>
+                </div>
+            </a>
+            <a class="menu-item" href="student_panel.php">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <label>Consultar alumno</label>
+                </div>
+            </a>
+            <a class="menu-item" href="group_query_panel.php">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <label>Consultar grupos</label>
+                </div>
+            </a>
+            <a class="menu-item" href="fee_query_panel.php">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-search-dollar"></i>
+                    </div>
+                    <label>Consultar cuotas</label>
+                </div>
+            </a>
+            <a class="menu-item" href="control_panel.php" style="display: none;">
+                <div class="menu-elements">
+                    <div class="menu-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <label>Panel de control</label>
+                </div>
+            </a>
+        </div>
         <div id="content">
             <h1>Panel de pagos</h1>
             <!--Verifica si no se está consultando un pago y si el alumno se encuentra graduado-->

@@ -28,6 +28,9 @@ function closeRegisterTutorDialog() {
 
 // cambia el nivel educativo para ajustar los valores en el selector de grado
 function changeEducationLevel() {
+    // actualiza el estado del botón enviar formulario
+    updateSubmitButtonStatus();
+
     // obtiene el código del nivel educativo seleccionado
     const levelCode = document.getElementById('student-education-level').value;
     // obtiene el elemento del selector de grado
@@ -303,6 +306,34 @@ function updateTutorSection() {
         hideElement('student-tutors-table');
     } else {
         showElement('student-tutors-table');
+    }
+}
+
+// actualiza el estado del botón para enviar el formulario
+function updateSubmitButtonStatus() {
+    const submitButton = document.getElementById('registration-form-submit');
+    const educationLevelSelect = document.getElementById('student-education-level');
+    const groupSelect = document.getElementById('student-group');
+    const genderSelect = document.getElementById('student-gender');
+    const tutorsTable = document.getElementById('student-tutors-table');
+    const tutorRows = tutorsTable.querySelectorAll('tbody tr');
+
+    let enableSubmit = educationLevelSelect.value !== 'none' &&
+        groupSelect.value !== 'none' &&
+        genderSelect.value !== 'none' &&
+        tutorRows.length > 0;
+
+    for (let i = 0; i < tutorRows.length; i++) {
+        const row = tutorRows[i];
+        const relationshipSelect = row.querySelector('td select');
+
+        enableSubmit = enableSubmit && (relationshipSelect.value !== 'none');
+    }
+    
+    if (enableSubmit) {
+        submitButton.removeAttribute('disabled');
+    } else {
+        submitButton.setAttribute('disabled', true);
     }
 }
 

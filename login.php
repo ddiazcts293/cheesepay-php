@@ -1,8 +1,17 @@
 <!DOCTYPE html>
 <html>
+    <?php
+        //session start
+        session_start();
+
+        if (isset($_SESSION['token'])) {
+            header('Location: index.php');
+        }
+    ?>
     <head>
         <!--title-->
         <title>Inicio de sesión - CheesePay</title>
+        <link rel="icon" type="image/png" href="favicon.png">
         <!--javascript-->
         <script src="js/fontawesome/solid.js"></script>
         <script src="js/alerts.js"></script>
@@ -19,38 +28,40 @@
         <meta charset="utf-8"/>
     </head>
     <body>
-        <form action="actions/authenticate.php" method="POST">
-            <div class="card width-4">
-                <div class="card-header">
-                    <h1>Iniciar sesión</h1>
-                </div>
-                <div class="card-body">
-                    <?php if (isset($_GET['event_type']) && $_GET['event_type'] == 'invalid_credentials') { ?>
-                        <div class="alert alert-danger">
-                        <span>
-                            <strong>Aviso:</strong> Usuario/contraseña correcta.
-                        </span>
+        <div id="content">
+            <form action="actions/authenticate.php" method="POST">
+                <div class="card width-4">
+                    <div class="card-header">
+                        <h1>Iniciar sesión</h1>
                     </div>
-                    <?php } ?>
-                    <div class="control-row">
-                        <div class="control control-col width-12">
-                            <label for="user-id">Nombre de usuario</label>
-                            <input type="text" id="user-id" name="user_id" placeholder="Ingrese su nombre de usuario...">
+                    <div class="card-body">
+                        <?php if (isset($_GET['event_type']) && $_GET['event_type'] == 'invalid_credentials') { ?>
+                            <div class="alert alert-danger">
+                            <span>
+                                <strong>Aviso:</strong> Usuario/contraseña correcta.
+                            </span>
+                        </div>
+                        <?php } ?>
+                        <div class="control-row">
+                            <div class="control control-col width-12">
+                                <label for="user-id">Nombre de usuario</label>
+                                <input type="text" id="user-id" name="user_id" placeholder="Ingrese su nombre de usuario...">
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="control control-col width-12">
+                                <label for="password">Contraseña</label>
+                                <input type="password" id="password" name="password" placeholder="Ingrese su contraseña...">
+                            </div>
                         </div>
                     </div>
-                    <div class="control-row">
-                        <div class="control control-col width-12">
-                            <label for="password">Contraseña</label>
-                            <input type="password" id="password" name="password" placeholder="Ingrese su contraseña...">
+                    <div class="card-footer">
+                        <div class="control-row">
+                            <button type="submit">Iniciar sesión</button>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <div class="control-row">
-                        <button type="submit">Iniciar sesión</button>
-                    </div>
-                </div>
-            </div>
-        </form>
+            </form>
+        </div>
     </body>
 </html>
