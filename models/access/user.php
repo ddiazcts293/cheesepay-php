@@ -14,6 +14,8 @@ final class User {
     private static $change_password =
         'CALL sp_cambiar_contrasenia(?,?,?, @success)';
 
+    private static $destroy_token = 'CALL sp_destruir_token(?)';
+
     private static $validate_token = 
         'SELECT 
             s.usuario AS user_id,
@@ -143,5 +145,19 @@ final class User {
         $conn->commit();
 
         return $success;
+    }
+
+    public static function destroy_auth_token(string $token) : void {
+        // inicia una nueva conexión
+        $conn = new MySqlConnection();
+        $conn->start_transaction();
+
+        // añade los parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $token);
+
+        // realiza la llamada al procedimiento para destruir el token
+        $conn->query(self::$destroy_token, $param_list);
+        $conn->commit();
     }
 }

@@ -14,7 +14,8 @@ function onCriteriaSelectorChanged() {
         uniformSection.hidden = true;
     }
 
-    if (selectedFeeType === 'maintenance' || 
+    if (selectedFeeType === 'none' || 
+        selectedFeeType === 'maintenance' || 
         selectedFeeType === 'special_event'
     ) {
         educationLevelSection.hidden = true;

@@ -1,23 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
     <?php
-        // inicia una sesión
-        session_start();
-        $user = null;
-
-        // verifica si el token de autentificación está fijado
-        if (isset($_SESSION['token'])) {
-            // valida el token para obtener el usuario asociado
-            require_once __DIR__ . '/models/access/user.php';
-            $user = User::validate_token($_SESSION['token']);
-        }
-
-        // verifica si no se localizó a un usuario con inicio de sesión
-        if ($user === null) {
-            session_destroy();
-            header('Location: login.php');
-        }
- 
+        require __DIR__ . '/functions/verify_login.php'; 
         require __DIR__ . '/models/school_year.php';
 
         $conn = new MySqlConnection();
@@ -61,17 +45,18 @@
         <title>Consulta de grupos - CheesePay</title>
         <link rel="icon" type="image/png" href="favicon.png">
         <!--javascript-->
-        <script src="js/fontawesome/solid.js"></script>
         <script src="js/common.js"></script>
         <script src="js/alerts.js"></script>
         <script src="js/dialogs.js"></script>
         <script src="js/group_query_panel.js"></script>
+        <script src="js/fontawesome/solid.js"></script>
         <!--stylesheets-->
         <link href="css/style.css" rel="stylesheet" />
-        <link href="css/menu.css" rel="stylesheet"/>
-        <link href="css/theme.css" rel="stylesheet">
+        <link href="css/menu.css" rel="stylesheet" />
+        <link href="css/header.css" rel="stylesheet" />
         <link href="css/controls.css" rel="stylesheet" />
         <link href="css/alerts.css" rel="stylesheet" />
+        <link href="css/theme.css" rel="stylesheet" />
         <link href="css/dialogs.css" rel="stylesheet" />
         <link href="css/fontawesome/fontawesome.css" rel="stylesheet" />
         <link href="css/fontawesome/solid.css" rel="stylesheet" />
@@ -103,7 +88,7 @@
                 </div>
             </div>
         </header>
-        <div id="menu">
+        <div id="menu" class="show">
             <a class="menu-item" href="index.php">
                 <div class="menu-elements">
                     <div class="menu-icon">
@@ -164,10 +149,10 @@
                     <form id="query-criteria" method="GET">
                         <div class="control-row">
                             <!--Selector de ciclo escolar-->
-                            <div class="control control-col width-6">
+                            <div class="control control-col col-5 col-s-4">
                                 <label for="school-year">Ciclo escolar</label>
                                 <select id="school-year" name="school_year_id" oninput="onCriteriaSelectorChanged()">
-                                    <option value="none">Seleccione uno</option>
+                                    <option value="none" disabled selected>Seleccione uno</option>
                                     <?php foreach ($school_years as $school_year) { ?>
                                         <option value="<?php echo $school_year->get_code()?>" <?php if ($school_year_id === $school_year->get_code()) echo 'selected'; ?> >
                                             <?php echo $school_year; ?>
@@ -175,7 +160,7 @@
                                     <?php } ?>
                                 </select>
                             </div>
-                            <div class="control control-col width-6">
+                            <div class="control control-col col-5 col-s-4">
                                 <label for="education-level">Nivel educativo</label>
                                 <select id="education-level" name="education_level_id" disabled>
                                     <option value="all">Todos</option>
@@ -186,10 +171,8 @@
                                     <?php } ?>
                                 </select>
                             </div>
-                        </div>
-                        <div class=control-row>
                             <!--Botón para realizar la consulta-->
-                            <div class="control control-col width-2">
+                            <div class="control button-col col-2 col-s-4">
                                 <button type="submit" id="query-button" disabled>Consultar</button>
                             </div>
                         </div>
@@ -201,19 +184,17 @@
                     <div class="card-body">
                         <table id="fees" class="tabla">
                             <thead>
-                                <th>Id.</th>
                                 <th>Grado</th>
                                 <th>Letra</th>
                                 <?php if ($education_level_id === null) { ?>
                                     <th>Nivel educativo</th>
                                 <?php } ?>
                                 <th>Cantidad de alumnos</th>
-                                <th>Acción</th>
+                                <th></th>
                             </thead>
                             <tbody>
                                 <?php foreach ($filtered_groups as $group) { ?>
                                     <tr>
-                                        <td><?php echo $group->get_number(); ?></td>
                                         <td><?php echo $group->get_grade(); ?></td>
                                         <td><?php echo $group->get_letter(); ?></td>
                                         <?php if ($education_level_id === null) { ?>
@@ -221,9 +202,7 @@
                                         <?php } ?>
                                         <td><?php echo $group->get_student_count(); ?></td>
                                         <td>
-                                            <button type="button" onclick="retrieveStudents(<?php echo $group->get_number(); ?>)">
-                                                Ver lista de alumnos
-                                            </button>
+                                            <i class="fa-solid fa-list-ol" onclick="retrieveStudents(<?php echo $group->get_number(); ?>)" title="Ver lista de alumnos"></i>
                                         </td>
                                     </tr>
                                 <?php } ?>
@@ -233,7 +212,7 @@
                 </div>
             <?php } ?>
         </div>
-        <dialog id="show-students-dialog">
+        <dialog id="show-students-dialog" class="col-8 col-s-12">
             <form method="DIALOG" action="#">
                 <div class="dialog-header">
                     <span class="dialog-close-btn">&times;</span>
@@ -249,7 +228,7 @@
                                 <td data-field-name="second_surname"></td>
                                 <td data-field-name="enrollment_status"></td>
                                 <td data-field-name="actions">
-                                    <button type="button" data-action-name="view">Ver</button>
+                                    <i class="fa-solid fa-user" data-action-name="view" title="Ver"></i>
                                 </td>
                             </tr>
                         </template>
@@ -260,7 +239,7 @@
                                 <th>Apellido paterno</th>
                                 <th>Apellido materno</th>
                                 <th>Estado</th>
-                                <th>Acciones</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -268,7 +247,11 @@
                     </table>
                 </div>
                 <div class="dialog-footer">
-                    <button type="submit">Cerrar</button>
+                    <div class="control-row">
+                        <div class="control control-col col-4">
+                            <button type="submit">Cerrar</button>
+                        </div>
+                    </div>
                 </div>
             </form>
         </dialog>

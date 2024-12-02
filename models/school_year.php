@@ -93,22 +93,24 @@ final class SchoolYear extends BaseObject {
     /* Consultas para cuotas de eventos especiales */
 
     private static $select_all_special_event_fees = 
-        'SELECT 
-            cuota AS fee, 
-            concepto AS concept,
-            fecha_programada AS scheduled_date,
-            costo AS cost
-         FROM vw_resumenes_eventos_especiales
+        'SELECT
+            cu.numero AS fee,
+            ee.concepto AS concept,
+            ee.fecha_programada AS scheduled_date,
+            ee.costo AS cost
+         FROM cuotas AS cu
+         INNER JOIN eventos_especiales AS ee ON cu.evento = ee.numero
          WHERE ciclo = ?';
 
     private static $select_all_current_special_event_fees = 
-        'SELECT 
-            cuota AS fee, 
-            concepto AS concept,
-            fecha_programada AS scheduled_date,
-            costo AS cost
-         FROM vw_resumenes_eventos_especiales
-         WHERE ciclo = ? 
+        'SELECT
+            cu.numero AS fee,
+            ee.concepto AS concept,
+            ee.fecha_programada AS scheduled_date,
+            ee.costo AS cost
+         FROM cuotas AS cu
+         INNER JOIN eventos_especiales AS ee ON cu.evento = ee.numero
+         WHERE ciclo = ?
          AND fecha_programada > CURDATE()';
 
     /* Consultas para cuotas de mensualidad */
@@ -163,6 +165,9 @@ final class SchoolYear extends BaseObject {
          FROM uniformes AS u
          INNER JOIN cuotas AS c ON u.numero = c.uniforme
          WHERE c.ciclo = ?';
+
+    private static $insert = 
+        'CALL sp_registrar_ciclo_escolar(?,?,@year_id)';
 
     // attributes
     private $code;
@@ -714,5 +719,26 @@ final class SchoolYear extends BaseObject {
         }
 
         return $result;
+    }
+
+    public static function create(
+        string $starting_date,
+        string $ending_date,
+        MySqlConnection $conn = null
+    ) : SchoolYear {
+
+        if ($conn === null) {
+            $conn = new MySqlConnection();
+        }
+
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $starting_date);
+        $param_list->add('s', $ending_date);
+
+        $conn->query(self::$insert, $param_list);
+        $resultset = $conn->query('SELECT @year_id');
+        $year_id = $resultset[0]['@year_id'];
+
+        return new SchoolYear($year_id, $starting_date, $ending_date);
     }
 }

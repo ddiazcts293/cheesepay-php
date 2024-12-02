@@ -6,16 +6,18 @@ if (isset($_POST['user_id'], $_POST['password'])) {
     // obtiene los datos provistos
     $user_id = $_POST['user_id'];
     $password = $_POST['password'];
+    // realiza el login
     $user = User::login($user_id, $password);
 
     if ($user !== null) {
-        // start session
+        // inicia una sesión
         session_start();
         
+        // almacena el token del usuario con el que podrá acceder al sistema sin
+        // ingresar un usuario o contraseña
         $_SESSION['token'] = $user->get_auth_token();
-        $_SESSION['user_full_name'] = $user->get_full_name();
         
-        // redirect to index
+        // redirige a index
         header('Location: /index.php');
     } else {
         // redirect to login again

@@ -1,23 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
     <?php
-        // inicia una sesión
-        session_start();
-        $user = null;
-
-        // verifica si el token de autentificación está fijado
-        if (isset($_SESSION['token'])) {
-            // valida el token para obtener el usuario asociado
-            require_once __DIR__ . '/models/access/user.php';
-            $user = User::validate_token($_SESSION['token']);
-        }
-
-        // verifica si no se localizó a un usuario con inicio de sesión
-        if ($user === null) {
-            session_destroy();
-            header('Location: login.php');
-        }
-
+        require __DIR__ . '/functions/verify_login.php'; 
+        
         /**
          * El panel puede actuar de tres maneras:
          * 1. Cuando se va a registrar a un alumno nuevo
@@ -182,17 +167,19 @@
         <title>Panel de pagos - CheesePay</title>
         <link rel="icon" type="image/png" href="favicon.png">
         <!--javascript-->
-        <script src="js/fontawesome/solid.js"></script>
-        <script src="js/payment_panel.js"></script>
         <script src="js/common.js"></script>
+        <script src="js/payment_panel.js"></script>
         <script src="js/alerts.js"></script>
         <script src="js/dialogs.js"></script>
+        <script src="js/fontawesome/solid.js"></script>
         <!--stylesheets-->
         <link href="css/style.css" rel="stylesheet" />
+        <link href="css/menu.css" rel="stylesheet" />
+        <link href="css/header.css" rel="stylesheet" />
         <link href="css/controls.css" rel="stylesheet" />
-        <link href="css/dialogs.css" rel="stylesheet" />
         <link href="css/alerts.css" rel="stylesheet" />
         <link href="css/theme.css" rel="stylesheet" />
+        <link href="css/dialogs.css" rel="stylesheet" />
         <link href="css/fontawesome/fontawesome.css" rel="stylesheet" />
         <link href="css/fontawesome/solid.css" rel="stylesheet" />
         <!--metadata-->
@@ -257,7 +244,7 @@
                 </div>
             </div>
         </header>
-        <div id="menu">
+        <div id="menu" class="show">
             <a class="menu-item" href="index.php">
                 <div class="menu-elements">
                     <div class="menu-icon">
@@ -323,64 +310,92 @@
                 </div>
             <?php } else { ?>
                 <form id="payment-form" action="#" onsubmit="onPaymentFormSubmitted(event)">
+                    <!--Cabecera de información del pago-->
                     <div class="card">
                         <div class="card-header">
                             <h2>Información de pago</h2>
                         </div>
-                        <!--Información del pago-->
                         <div class="card-body">
-                            <div class="control-row">
+                            <section class="info col-6 col-s-12">
                                 <?php if ($payment !== null) { ?>
-                                    <p>Folio: <?php echo $payment->get_payment_id();?></p>
+                                    <div class="field-row">
+                                        <span class="field-name">Folio</span>
+                                        <span class="field-value"><?php echo $payment->get_payment_id();?></span>
+                                    </div>
                                 <?php } ?>
-                                <p>Fecha de pago: <?php echo ($payment !== null) ? $payment->get_date() : date('d/m/Y'); ?></p>
                                 <?php if (!$is_registering_new_student) {; ?>
-                                    <p>Matrícula: <?php echo $student->get_student_id(); ?></p>
+                                    <div class="field-row">
+                                        <span class="field-name">Matrícula</span>
+                                        <span class="field-value"><?php echo $student->get_student_id(); ?></span>
+                                    </div>
                                 <?php }; ?>
-                                <p>Alumno: <?php echo $student->get_full_name(); ?></p>
-                                <p>Ciclo escolar: <?php echo $school_year; ?> </p>
-                                <?php if ($current_group !== null) { ?>
-                                    <p>Nivel educativo: <?php echo $current_group->get_education_level(); ?></p>
-                                    <p>Grupo: <?php echo $current_group; ?></p>
-                                <?php } ?>
-                                <p>Estado de inscripción: 
+                                <div class="field-row">
+                                    <span class="field-name">Alumno</span>
+                                    <span class="field-value"><?php echo $student->get_full_name(); ?></span>
+                                </div>
+                                <div class="field-row">
+                                    <span class="field-name">Inscripción</span>
+                                    <span class="field-value">
                                     <?php if ($is_registering_new_student) { ?>
                                         En proceso de registro
                                     <?php } else { 
                                         echo $student->get_enrollment_status()->get_description();
                                     } ?>
-                                </p>
-                            </div>
-                            <div class="control-row">
-                                <?php if (!$is_read_only) { ?>
-                                    <div class="control control-col width-8">
-                                        <label for="student-tutor">Tutor</label>
-                                        <select id="student-tutor" name="tutor" required>
-                                            <option value="none">Seleccione uno</option>
-                                            <?php foreach ($tutors as $tutor) {; ?>
-                                                <option value="<?php echo $tutor->get_number(); ?>">
-                                                    <?php echo $tutor->get_full_name(); ?>
-                                                </option>
-                                            <?php }; ?>
-                                        </select>
+                                    </span>
+                                </div>
+                                <?php if (!$is_registering_new_student) { ?>
+                                    <div class="field-row">
+                                        <span class="field-name">Tutor</span>
+                                        <span class="field-value">
+                                            <?php if (!$is_read_only) { ?>
+                                                <select id="student-tutor" name="tutor" required>
+                                                    <option value="none" selected disabled>Seleccione uno</option>
+                                                    <?php foreach ($tutors as $tutor) {; ?>
+                                                        <option value="<?php echo $tutor->get_number(); ?>">
+                                                            <?php echo $tutor->get_full_name(); ?>
+                                                        </option>
+                                                    <?php }; ?>
+                                                </select>   
+                                            <?php } else {
+                                                echo $payment->get_tutor()->get_full_name();
+                                            } ?>
+                                        </span>
                                     </div>
-                                <?php } else { ?>
-                                    <p>Tutor: <?php echo $payment->get_tutor()->get_full_name(); ?></p>
                                 <?php } ?>
-                            </div>
+                            </section>
+                            <section class="info col-6 col-s-12">
+                                <div class="field-row">
+                                    <span class="field-name">Fecha de pago</span>
+                                    <span class="field-value"><?php echo ($payment !== null) ? $payment->get_date() : date('d/m/Y'); ?></span>
+                                </div>
+                                <div class="field-row">
+                                    <span class="field-name">Ciclo escolar</span>
+                                    <span class="field-value"><?php echo $school_year; ?></span>
+                                </div>
+                                <?php if ($current_group !== null) { ?>
+                                    <div class="field-row">
+                                        <span class="field-name">Nivel educativo</span>
+                                        <span class="field-value"><?php echo $current_group->get_education_level(); ?></span>
+                                    </div>
+                                    <div class="field-row">
+                                        <span class="field-name">Grupo</span>
+                                        <span class="field-value"><?php echo $current_group; ?></span>
+                                    </div>
+                                <?php } ?>
+                            </section>
                         </div>
-                    </div>
-                    <div class="card">
-                        <!--Selectores de tipo de cuotas-->
-                        <?php if (!$is_read_only) { ?>
-                            <div class="card-header">
+                        <!--Cuerpo del pago-->
+                        <div class="card-body">
+                            <h3>Cuotas</h3>
+                            <!--Selectores de tipo de cuotas-->
+                            <?php if (!$is_read_only) { ?>
                                 <!--Selectores de cuotas-->
                                 <div class="control-row">
                                     <!--Selector de tipo de cuota-->
-                                    <div class="control control-col width-4">
+                                    <div class="control control-col col-2 col-s-6">
                                         <label for="fee-type">Tipo de cuota</label>
                                         <select id="fee-type" oninput="onFeeTypeChanged()">
-                                            <option value="none">Seleccione una</option>
+                                            <option value="none" selected disabled>Seleccione una</option>
                                             <!--
                                             Omite incluir las cuotas de inscripción, mensualidad, mantenimiento y papeleria
                                             cuando se está registrando a un alumno
@@ -395,13 +410,13 @@
                                     </div>
                                     <!--Selector de mensualidades-->
                                     <section id="monthly-selector" hidden>
-                                        <div class="control control-col width-4">
+                                        <div class="control control-col col-8">
                                             <label for="monthly-fee">Mes</label>
                                             <select id="monthly-fee" oninput="onMonthlyFeeChanged()">
-                                                <option value="none">Seleccione una</option>
+                                                <option value="none" selected disabled>Seleccione una</option>
                                                 <?php foreach ($monthly_fees as $monthly) {; ?>
                                                     <option value="<?php echo $monthly->get_number(); ?>">
-                                                        <?php echo $monthly->get_concept(); ?>
+                                                        <?php echo $monthly->get_month(); ?>
                                                     </option>
                                                 <?php }; ?>
                                             </select>
@@ -409,10 +424,10 @@
                                     </section>
                                     <!--Selector de uniformes-->
                                     <section id="uniform-selector" hidden>
-                                        <div class="control control-col width-4">
+                                        <div class="control control-col col-2 col-s-6">
                                             <label for="uniform-type">Tipo de uniforme</label>
                                             <select id="uniform-type" oninput="onUniformTypeChanged()">
-                                                <option value="none">Seleccione uno</option>
+                                                <option value="none" selected disabled>Seleccione uno</option>
                                                 <?php foreach ($uniform_types as $type) {; ?>
                                                     <option value="<?php echo $type->get_number(); ?>">
                                                         <?php echo $type->get_description(); ?>
@@ -420,19 +435,19 @@
                                                 <?php }; ?>
                                             </select>
                                         </div>
-                                        <div class="control control-col width-4">
+                                        <div class="control control-col col-6 col-s-8">
                                             <label for="uniform-fee">Uniforme</label>
                                             <select id="uniform-fee" oninput="onUniformFeeChanged()">
-                                                <option value="none">Seleccione uno</option>
+                                                <option value="none" selected disabled>Seleccione uno</option>
                                             </select>
                                         </div>
                                     </section>
                                     <!--Selector de eventos especiales-->
                                     <section id="special-event-selector" hidden>
-                                        <div class="control control-col width-4">
+                                        <div class="control control-col col-8">
                                             <label for="special-event-fee">Evento especial</label>
                                             <select id="special-event-fee" oninput="onSpecialEventFeeChanged()">
-                                                <option value="none">Seleccione uno</option>
+                                                <option value="none" selected disabled>Seleccione uno</option>
                                                 <?php foreach ($special_event_fees as $event) {; ?>
                                                     <option value="<?php echo $event->get_number(); ?>">
                                                         <?php echo $event->get_concept(); ?>
@@ -442,71 +457,74 @@
                                         </div>
                                     </section>
                                     <!--Botón para agregar la cuota seleccionada-->
-                                    <div class="control control-col width-4">
+                                    <div class="control button-col col-2 col-s-4">
                                         <button type="button" id="add-fee-button" onclick="retrieveFee()" disabled>Agregar</button>
                                     </div>
                                 </div>
-                            </div>
-                        <?php } ?>
-                        <!--Tabla de cuotas-->
-                        <div class="card-body">
-                            <table id="fees-table">
-                                <template id="fees-table-row-template">
-                                    <tr>
-                                        <td data-field-name="id"></td>
-                                        <td data-field-name="concept"></td>
-                                        <td data-field-name="cost"></td>
-                                        <td data-field-name="actions">
-                                            <button type="button" data-action-name="remove">Remover</button>
-                                        </td>
-                                    </tr>
-                                </template>
-                                <thead>
-                                    <tr>
-                                        <th>Id.</th>
-                                        <th>Concepto</th>
-                                        <th>Costo</th>
-                                        <?php if (!$is_read_only) { ?>
-                                            <th>Acciones</th>
-                                        <?php } ?>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!--Agrega las cuotas predeterminadas para un alumno nuevo-->
-                                    <?php foreach ($fees as $fee) { ?>
-                                        <tr data-attachment="<?php echo $fee->get_number(); ?>">
-                                            <td data-field-name="id"><?php echo $fee->get_number(); ?></td>
-                                            <td data-field-name="concept"><?php echo $fee->get_concept(); ?></td>
-                                            <td data-field-name="cost"><?php echo format_as_currency($fee->get_cost()); ?></td>
+                            <?php } ?>
+                            <!--Tabla de cuotas-->
+                            <div class="control-row">
+                                <table id="fees-table">
+                                    <template id="fees-table-row-template">
+                                        <tr>
+                                            <td data-field-name="concept"></td>
+                                            <td data-field-name="cost"></td>
+                                            <td data-field-name="actions" class="one-action-td">
+                                                <i class="fa-solid fa-xmark" data-action-name="remove" title="Remover"></i>
+                                            </td>
                                         </tr>
-                                    <?php } ?>
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="2">Total</td>
-                                        <td id="fees-table-total-cell" data-field-name="total">
-                                            <?php 
-                                                // calcula el total inicial
-                                                $total = 0.0;
-                                                // recorre todas las cuotas agregadas para sumar los costos
-                                                foreach ($fees as $fee) {
-                                                    $total += $fee->get_cost();
-                                                }
+                                    </template>
+                                    <thead>
+                                        <tr>
+                                            <th>Concepto</th>
+                                            <th>Costo</th>
+                                            <?php if (!$is_read_only) { ?>
+                                                <th class="one-action-th"></th>
+                                            <?php } ?>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!--Agrega las cuotas predeterminadas para un alumno nuevo-->
+                                        <?php foreach ($fees as $fee) { ?>
+                                            <tr data-attachment="<?php echo $fee->get_number(); ?>">
+                                                <td data-field-name="concept"><?php echo $fee->get_concept(); ?></td>
+                                                <td data-field-name="cost"><?php echo format_as_currency($fee->get_cost()); ?></td>
+                                            </tr>
+                                        <?php } ?>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>Total</td>
+                                            <td id="fees-table-total-cell" data-field-name="total" colspan="2">
+                                                <?php 
+                                                    // calcula el total inicial
+                                                    $total = 0.0;
+                                                    // recorre todas las cuotas agregadas para sumar los costos
+                                                    foreach ($fees as $fee) {
+                                                        $total += $fee->get_cost();
+                                                    }
 
-                                                echo format_as_currency($total);
-                                            ?>
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                                                    echo format_as_currency($total);
+                                                ?>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
                         <div class="card-footer">
-                            <div class="control-row control-width-4">
+                            <div class="control-row">
                                 <?php if ($is_read_only) { ?>
-                                    <button type="button" onclick="printInvoice(<?php echo $payment->get_payment_id()?>)">Imprimir factura</button>
+                                    <div class="control control-col col-4">
+                                        <button type="button" onclick="printInvoice(<?php echo $payment->get_payment_id()?>)">Imprimir factura</button>
+                                    </div>
                                 <?php } else { ?>
-                                    <button type="submit">Continuar</button>
-                                    <button type="button">Cancelar</button>
+                                    <div class="control control-col col-4">
+                                        <button type="submit">Continuar</button>
+                                    </div>
+                                    <div class="control control-col col-4">
+                                        <button type="button">Cancelar</button>
+                                    </div>
                                 <?php } ?>
                             </div>
                         </div>

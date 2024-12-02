@@ -75,7 +75,7 @@ function retrieveFee() {
 
 // agrega una cuota a la lista
 function addFeeToList(fee) {
-    // obtiene el elemento en donde están las filas de los tutores agregados
+    // obtiene el elemento en donde están las filas de las cuotas agregados
     const tbody = document.querySelector('#fees-table tbody');
     // obtiene la plantilla de la fila
     const rowTemplate = document.getElementById('fees-table-row-template');
@@ -85,14 +85,12 @@ function addFeeToList(fee) {
     let addedRow = tbody.lastElementChild;
 
     // obtiene los elementos que contendrán algún dato del tutor
-    let idField = addedRow.querySelector('[data-field-name=\'id\']');
     let conceptField = addedRow.querySelector('[data-field-name=\'concept\']');
     let costField = addedRow.querySelector('[data-field-name=\'cost\']');
     let removeButton = addedRow.querySelector('[data-action-name=\'remove\']');
     let rowId = feeRowId++;
     
     // establece los valores
-    idField.textContent = fee['number'];
     conceptField.textContent = fee['concept'];
     costField.textContent = formatter.format(fee['cost']);
     addedRow.setAttribute('data-row-id', rowId);

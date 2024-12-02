@@ -20,6 +20,7 @@
                 // realiza la consulta del pago
                 $payment = Payment::get($payment_id, $conn);
                 if ($payment !== null ) {
+                    // obtiene la información del pago
                     $payment_fees = $payment->get_fees($conn);
                     $student = $payment->get_student();
                     $tutor = $payment->get_tutor();
@@ -67,10 +68,10 @@
                 border-collapse: collapse;
             }
             th, td {
-            border: 1px solid #000;
-            padding: 8px;
-            text-align: left;
-        }
+                border: 1px solid #000;
+                padding: 8px;
+                text-align: left;
+            }
         </style>
     </head>
     <body>

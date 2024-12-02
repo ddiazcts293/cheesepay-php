@@ -1,24 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <?php
-            // inicia una sesión
-            session_start();
-            $user = null;
-
-            // verifica si el token de autentificación está fijado
-            if (isset($_SESSION['token'])) {
-                // valida el token para obtener el usuario asociado
-                require_once __DIR__ . '/models/access/user.php';
-                $user = User::validate_token($_SESSION['token']);
-            }
-
-            // verifica si no se localizó a un usuario con inicio de sesión
-            if ($user === null) {
-                session_destroy();
-                header('Location: login.php');
-            }
-        ?>
+        <?php require __DIR__ . '/functions/verify_login.php'; ?>
         <!--title-->
         <title>Inicio - CheesePay</title>
         <link rel="icon" type="image/png" href="favicon.png">
@@ -27,9 +10,12 @@
         <script src="js/fontawesome/solid.js"></script>
         <!--stylesheets-->
         <link href="css/style.css" rel="stylesheet" />
+        <link href="css/menu.css" rel="stylesheet" />
+        <link href="css/header.css" rel="stylesheet" />
         <link href="css/controls.css" rel="stylesheet" />
         <link href="css/alerts.css" rel="stylesheet" />
         <link href="css/theme.css" rel="stylesheet" />
+        <link href="css/dialogs.css" rel="stylesheet" />
         <link href="css/fontawesome/fontawesome.css" rel="stylesheet" />
         <link href="css/fontawesome/solid.css" rel="stylesheet" />
         <!--metadata-->
@@ -60,7 +46,7 @@
                 </div>
             </div>
         </header>
-        <div id="menu">
+        <div id="menu" class="show">
             <a class="menu-item" href="index.php">
                 <div class="menu-elements">
                     <div class="menu-icon">

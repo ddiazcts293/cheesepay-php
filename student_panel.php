@@ -1,23 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
     <?php
-        // inicia una sesión
-        session_start();
-        $user = null;
-
-        // verifica si el token de autentificación está fijado
-        if (isset($_SESSION['token'])) {
-            // valida el token para obtener el usuario asociado
-            require_once __DIR__ . '/models/access/user.php';
-            $user = User::validate_token($_SESSION['token']);
-        }
-
-        // verifica si no se localizó a un usuario con inicio de sesión
-        if ($user === null) {
-            session_destroy();
-            header('Location: login.php');
-        }
-        
+        require __DIR__ . '/functions/verify_login.php';
         require __DIR__ . '/models/student.php';
 
         // declara una variable para almacenar la información del alumno
@@ -25,7 +9,9 @@
         $tutors = [];
         $groups = [];
         $payments = [];
+        $payment_years = [];
         $current_group = null;
+        $current_pic_file_name = null;
         $enrollment_status_id = EnrollmentStatus::ENROLLED;
 
         // declara una variable para indicar si está habilitado el modo de búscqueda
@@ -33,27 +19,46 @@
 
         // verifica si se ha recibido una matricula de un alumno
         if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['student_id'])) {
-            // obtiene y limpia la matricula
-            $student_id = sanitize($_GET['student_id']);
-            
-            // inicia una nueva conexión utilizado una transacción
-            $conn = new MySqlConnection();
-            $conn->start_transaction();
-
-            // consulta la información del alumno
-            $student = Student::get($student_id, $conn);
-            $tutors = $student->get_tutors($conn);
-            $groups = $student->get_groups($conn);
-            $current_group = $student->get_current_group($conn);
-            $payments = $student->get_payments($conn);
-
             // establece el indicador de búsqueda en falso
             $is_search_mode_enabled = false;
-            $enrollment_status_id = $student->get_enrollment_status()->get_number();
+            // obtiene y limpia la matricula
+            $student_id = sanitize($_GET['student_id']);
 
-            // confirma la transacción
-            $conn->commit();
+            // verifica si la longitud de la matrícula es exactamente 6
+            if (strlen($student_id) == 6) {
+                // inicia una nueva conexión utilizado una transacción
+                $conn = new MySqlConnection();
+                $conn->start_transaction();
+                
+                try {
+                    // consulta la información del alumno
+                    $student = Student::get($student_id, $conn);
+
+                    // verifica si se pudo localizar al alumno
+                    if ($student !== null) {
+                        // obtiene información relacionada
+                        $tutors = $student->get_tutors($conn);
+                        $groups = $student->get_groups($conn);
+                        $current_group = $student->get_current_group($conn);
+                        $payments = $student->get_payments($conn);
+                        $payment_years = $student->get_payment_years($conn);
+                        $current_pic_file_name = $student->get_current_pic($conn);
+                        $enrollment_status_id = $student->get_enrollment_status()->get_number();
+                    }
+
+                    // confirma la transacción
+                    $conn->commit();
+                } catch (mysqli_sql_exception $ex) {
+                    $conn->rollback();
+                    die('Database error: ' . $ex->getMessage());
+                }
+            }
         }
+
+        $is_pic_set = $current_pic_file_name !== null;
+        $current_pic_file_name = $is_pic_set ? 
+            'pictures/' . $current_pic_file_name :
+            'images/student.png';
     ?>
     <head>
         <!--title-->
@@ -62,17 +67,19 @@
         </title>
         <link rel="icon" type="image/png" href="favicon.png">
         <!--javascript-->
-        <script src="js/fontawesome/solid.js"></script>
         <script src="js/common.js"></script>
         <script src="js/alerts.js"></script>
         <script src="js/dialogs.js"></script>
         <script src="js/student_panel.js"></script>
+        <script src="js/fontawesome/solid.js"></script>
         <!--stylesheets-->
-        <link href="css/style.css" rel="stylesheet" />
+        <link href="css/menu.css" rel="stylesheet" />
+        <link href="css/header.css" rel="stylesheet" />
         <link href="css/controls.css" rel="stylesheet" />
         <link href="css/alerts.css" rel="stylesheet" />
-        <link href="css/dialogs.css" rel="stylesheet" />
         <link href="css/theme.css" rel="stylesheet" />
+        <link href="css/style.css" rel="stylesheet" />
+        <link href="css/dialogs.css" rel="stylesheet" />
         <link href="css/fontawesome/fontawesome.css" rel="stylesheet" />
         <link href="css/fontawesome/solid.css" rel="stylesheet" />
         <!--metadata-->
@@ -112,7 +119,7 @@
                 </div>
             </div>
         </header>
-        <div id="menu">
+        <div id="menu" class="show">
             <a class="menu-item" href="index.php">
                 <div class="menu-elements">
                     <div class="menu-icon">
@@ -164,7 +171,7 @@
         </div>
         <div id="content">
             <h1>Panel de información de alumno</h1>
-            <!--Despliega la información de un alumno solo si se encontró uno-->
+            <!--Despliega la información de un alumno-->
             <?php if ($student !== null) {; ?>
                 <?php if ($enrollment_status_id !== EnrollmentStatus::ENROLLED) {; ?>
                     <div class="alert alert-warning">
@@ -179,23 +186,71 @@
                         <h2>Información general</h2>
                     </div>
                     <div class="card-body">
-                        <p>Matrícula: <?php echo $student->get_student_id(); ?></p>
-                        <p>Nombre: <?php echo $student->get_full_name(); ?></p>
-                        <?php if ($current_group !== null) { ?>
-                            <p>Nivel educativo: <?php echo $current_group->get_education_level()->get_description(); ?></p>
-                            <p>Grupo: <?php echo $current_group; ?></p>
-                        <?php } ?>
-                        <p>Estado: <?php echo $student->get_enrollment_status()->get_description(); ?> </p>
-                        <p>Fecha de alta: <?php echo $student->get_enrollment_date(); ?> </p>
-                        <?php if ($enrollment_status_id !== EnrollmentStatus::ENROLLED) { ?>
-                            <p>Fecha de baja: <?php echo $student->get_withdrawal_date(); ?></p>
-                        <?php } ?>
-                        <!--Sección de datos personales-->
-                        <div class="control-row">
-                            <a href="payment_panel.php?student_id=<?php echo $student_id; ?>">Registrar pago</a>
-                            <!--a href="#">Dar de baja<a-->
-                        </div>
+                        <section class="info col-8 col-s-12">
+                            <div class="field-row">
+                                <span class="field-name">Matrícula</span>
+                                <span class="field-value"><?php echo $student->get_student_id(); ?></span>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-name">Nombre</span>
+                                <span class="field-value"><?php echo $student->get_full_name(); ?></span>
+                            </div>
+                            <?php if ($current_group !== null) { ?>
+                                <div class="field-row">
+                                    <span class="field-name">Nivel educativo</span>
+                                    <span class="field-value"><?php echo $current_group->get_education_level()->get_description(); ?></span>
+                                </div>
+                                <div class="field-row">
+                                    <span class="field-name">Grupo</span>
+                                    <span class="field-value"><?php echo $current_group; ?></span>
+                                </div>
+                            <?php } ?>
+                            <div class="field-row">
+                                <span class="field-name">Inscripción</span>
+                                <span class="field-value"><?php echo $student->get_enrollment_status()->get_description(); ?></span>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-name">Fecha de alta</span>
+                                <span class="field-value"><?php echo $student->get_enrollment_date(); ?></span>
+                            </div>
+                            <?php if ($enrollment_status_id !== EnrollmentStatus::ENROLLED) { ?>
+                                <div class="field-row">
+                                    <span class="field-name">Fecha de baja</span>
+                                    <span class="field-value"><?php echo $student->get_withdrawal_date(); ?></span>
+                                </div>
+                            <?php } ?>
+                        </section>
+                        <section class="info col-4 col-s-12">
+                            <div class="control-row">
+                                <div class="student-pic">
+                                    <img src="<?php echo $current_pic_file_name; ?>">
+                                </div>
+                            </div>
+                            <div class="control-row" hidden>
+                                <div class="control control-col col-4">
+                                    <button type="button">Establecer foto</button>
+                                    <button type="button">Remover foto</button>
+                                </div>
+                                <form action="actions/upload_picture.php" method="post" enctype="multipart/form-data">
+                                    <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
+                                    <input type="file" name="picture">
+                                    <button type="submit" name="submit">Subir</button>
+                                </form>
+                            </div>
+                        </section>
                     </div>
+                    <?php if ($enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
+                        <div class="card-footer">
+                            <div class="control-row">
+                                <div class="control control-col col-4">
+                                    <button type="button" onclick="openNewPaymentDialog(<?php echo $student_id; ?>)">Registrar pago</button>
+                                </div>
+                                <div class="control control-col col-4">
+                                    <button type="button" onclick="openWithdrawDialog()">Dar de baja</button>
+                                </div>
+                            </div>
+                        </div>
+                    <?php } ?>
                 </div>
                 <!--Sección de información personal-->
                 <div class="card">
@@ -203,28 +258,60 @@
                         <h2>Información personal</h2>
                     </div>
                     <div class="card-body">
-                        <p>Género: <?php echo $student->get_gender()->get_description(); ?></p>
-                        <p>Fecha de nacimiento: <?php echo $student->get_birth_date(); ?></p>
-                        <p>CURP: <?php echo $student->get_curp(); ?></p>
-                        <p>NSS:
-                        <?php
-                            $ssn = $student->get_ssn();
-                            if ($ssn !== null) {
-                                echo $ssn;
-                            } else if ($enrollment_status_id === EnrollmentStatus::ENROLLED) {;
-                        ?>
-                        <button onclick="openSetSsnDialog()">Establecer</button>
-                        <?php }; ?>
-                        </p>
-                        <h3>Dirección</h3>
-                        <p>Calle: <?php echo $student->get_address_street(); ?></p>
-                        <p>Número: <?php echo $student->get_address_number(); ?></p>
-                        <p>Colonia: <?php echo $student->get_address_district(); ?></p>
-                        <p>Código postal: <?php echo $student->get_address_zip(); ?></p>
-                        <?php if ($enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
-                        <p><button onclick="openEditAddressDialog()">Actualizar dirección</button></p>
-                        <?php } ?>
+                        <section class="info col-6 col-s-12 col-m-12">
+                            <h3>General</h3>
+                            <div class="field-row">
+                                <span class="field-name">Género</span>
+                                <span class="field-value"><?php echo $student->get_gender()->get_description(); ?></span>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-name">Fecha de nacimiento</span>
+                                <span class="field-value"><?php echo $student->get_birth_date(); ?></span>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-name">CURP</span>
+                                <span class="field-value"><?php echo $student->get_curp(); ?></span>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-name">NSS</span>
+                                <span class="field-value">
+                                    <?php if ($student->get_ssn() !== null) { ?>
+                                        <?php echo $student->get_ssn(); ?>
+                                    <?php } else if ($enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
+                                        <button onclick="openSetSsnDialog()">Establecer</button>
+                                    <?php } ?>
+                                </span>
+                            </div>
+                        </section>
+                        <section class="info col-6 col-s-12 col-m-12">
+                            <h3>Dirección</h3>
+                            <div class="field-row">
+                                <span class="field-name">Calle</span>
+                                <span class="field-value"><?php echo $student->get_address_street(); ?></span>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-name">Número</span>
+                                <span class="field-value"><?php echo $student->get_address_number(); ?></span>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-name">Colonia</span>
+                                <span class="field-value"><?php echo $student->get_address_district(); ?></span>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-name">Código postal</span>
+                                <span class="field-value"><?php echo $student->get_address_zip(); ?></span>
+                            </div>
+                        </section>
                     </div>
+                    <?php if ($enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
+                        <div class="card-footer">
+                            <div class="control-row">
+                                <div class="control control-col col-4">
+                                    <button onclick="openEditAddressDialog()">Actualizar dirección</button>
+                                </div>
+                            </div>
+                        </div>
+                    <?php } ?>
                 </div>
                 <!--Sección de tutores registrados-->
                 <div class="card">
@@ -237,7 +324,7 @@
                                 <tr>
                                     <th>Nombre</th>
                                     <th>Parentesco</th>
-                                    <th>Acciones</th>
+                                    <th class="two-actions-th"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -245,9 +332,9 @@
                                     <tr>
                                         <td><?php echo $tutor->get_full_name(); ?></td>
                                         <td><?php echo $tutor->get_relationship()->get_description(); ?></td>
-                                        <td>
-                                            <button type="button" onclick="openViewTutorInfo(<?php echo $tutor->get_number(); ?>)">Información</button>
-                                            <button type="button" onclick="openEditTutorContact(<?php echo $tutor->get_number(); ?>)">Editar contacto</button>
+                                        <td class="two-actions-td">
+                                            <i class="fa-regular fa-address-card" onclick="openViewTutorInfo(<?php echo $tutor->get_number(); ?>)" title="Ver información"></i>
+                                            <i class="fa-solid fa-user-pen" onclick="openEditTutorContact(<?php echo $tutor->get_number(); ?>)" title="Editar contacto"></i>
                                         </td>
                                     </tr>
                                 <?php } ?>
@@ -294,34 +381,45 @@
                         <h2>Historial de pagos</h2>
                     </div>
                     <div class="card-body">
-                        <table>
+                        <div class="control-row">
+                            <div class="control control-col col-4">
+                                <label>Filtrar por año</label>
+                                <select id="year-filter-select" oninput="onYearFilterSelectInput(event)">
+                                    <option value="all">Todos</option>
+                                    <?php foreach ($payment_years as $year) { ?>
+                                        <option value="<?php echo $year; ?>"><?php echo $year; ?></option>
+                                    <?php }?>
+                                </select>
+                            </div>
+                        </div>
+                        <table id="payments-table">
                             <thead>
                                 <tr>
                                     <th>Folio</th>
                                     <th>Fecha</th>
+                                    <th>Pagado por</th>
                                     <th>Total</th>
-                                    <th>Cuotas</th>
-                                    <th>Acciones</th>
+                                    <th class="two-actions-th"></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($payments AS $payment) { ?>
-                                    <tr>
+                                <?php foreach ($payments AS $payment) { if ($payment instanceof Payment) { ?>
+                                    <tr data-payment-year="<?php echo date_create($payment->get_date())->format('Y'); ?>">
                                         <td><?php echo $payment->get_payment_id(); ?></td>
                                         <td><?php echo $payment->get_date(); ?></td>
-                                        <td><?php echo $payment->get_total_amount(); ?></td>
-                                        <td><?php echo $payment->get_fee_count(); ?></td>
-                                        <td>
-                                            <button onclick="viewPayment(<?php echo $payment->get_payment_id(); ?>)">Ver</button>
-                                            <button onclick="printInvoice(<?php echo $payment->get_payment_id(); ?>)">Imprimir</button>
+                                        <td><?php echo $payment->get_tutor()->get_full_name(); ?></td>
+                                        <td><?php echo format_as_currency($payment->get_total_amount()); ?></td>
+                                        <td class="two-actions-td">
+                                            <i class="fa-solid fa-file-invoice-dollar" onclick="viewPayment(<?php echo $payment->get_payment_id(); ?>)" title="Ver"></i>
+                                            <i class="fa-solid fa-print" onclick="printInvoice(<?php echo $payment->get_payment_id(); ?>)" title="Imprimir"></i>
                                         </td>
                                     </tr>
-                                <?php } ?>
+                                <?php } } ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
-                <dialog id="edit-tutor-contact-dialog">
+                <dialog id="edit-tutor-contact-dialog" class="col-6">
                     <form id="edit-tutor-contact-form" action="#" method="dialog" onsubmit="onEditTutorContactFormSubmitted(event)">
                         <input type="hidden" name="tutor_id">
                         <div class="dialog-header">
@@ -335,22 +433,26 @@
                                 </span>
                             </div>
                             <div class="control-row">
-                                <div class="control control-col width-6">
+                                <div class="control control-col col-6">
                                     <label for="tutor-contact-email">Correo electrónico</label>
-                                    <input type="email" id="tutor-contact-email" name="email" minlength="1" maxlength="48" required>
+                                    <input type="email" id="tutor-contact-email" name="email" maxlength="48" required>
                                 </div>
-                                <div class="control control-col width-6">
+                                <div class="control control-col col-6">
                                     <label for="tutor-contact-phone-number">Número de teléfono</label>
-                                    <input type="text" id="tutor-contact-phone-number" name="phone_number" minlength="12" maxlength="12" required>
+                                    <input type="tel" id="tutor-contact-phone-number" name="phone_number" minlength="12" maxlength="12" required>
                                 </div>
                             </div>
                         </div>
                         <div class="dialog-footer">
-                            <input type="submit" value="Actualizar">
+                            <div class="control-row">
+                                <div class="control control-col col-4">
+                                    <button type="submit">Actualizar</button>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </dialog>
-                <dialog id="view-tutor-info-dialog">
+                <dialog id="view-tutor-info-dialog" class="col-6">
                     <form id="view-tutor-info-form" action="#" method="dialog">
                         <input type="hidden" name="tutor_id">
                         <div class="dialog-header">
@@ -358,20 +460,39 @@
                             <h2>Información de tutor</h2>
                         </div>
                         <div class="dialog-body">
-                            <div class="control-row">
-                                <p>Nombre: <span id="tutor-info-name"></span></p>
-                                <p>Parentesco: <span id="tutor-info-relationship"></span> </p>
-                                <p>RFC: <span id="tutor-info-rfc"></span> </p>
-                                <p>Número de teléfono: <span id="tutor-info-phone-number"></span> </p>
-                                <p>Correo electrónico: <span id="tutor-info-email"></span></p>
-                            </div>
+                            <section class="info">
+                                <div class="field-row">
+                                    <span class="field-name">Nombre</span>
+                                    <span class="field-value" id="tutor-info-name"></span>
+                                </div>
+                                <div class="field-row">
+                                    <span class="field-name">Parentesco</span>
+                                    <span class="field-value" id="tutor-info-relationship"></span>
+                                </div>
+                                <div class="field-row">
+                                    <span class="field-name">RFC</span>
+                                    <span class="field-value" id="tutor-info-rfc"></span>
+                                </div>
+                                <div class="field-row">
+                                    <span class="field-name">Número de teléfono</span>
+                                    <span class="field-value" id="tutor-info-phone-number"></span>
+                                </div>
+                                <div class="field-row">
+                                    <span class="field-name">Correo electrónico</span>
+                                    <span class="field-value" id="tutor-info-email"></span>
+                                </div>
+                            </section>
                         </div>
                         <div class="dialog-footer">
-                            <input type="submit" value="Cerrar">
+                            <div class="control-row">
+                                <div class="control control-col col-4">
+                                    <button type="submit">Cerrar</button>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </dialog>
-                <dialog id="edit-address-dialog">
+                <dialog id="edit-address-dialog" class="col-6">
                     <form id="edit-address-form" action="#" method="dialog" onsubmit="onEditAddressFormSubmitted(event)">
                         <!--Agrega un campo oculto para almacenar la matricula del estudiante-->
                         <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
@@ -386,32 +507,36 @@
                                 </span>
                             </div>
                             <div class="control-row">
-                                <div class="control control-col width-6">
+                                <div class="control control-col col-6">
                                     <label for="student-address-street">Calle</label>
                                     <input type="text" id="student-address-street" name="street" minlength="1" maxlength="32" value="<?php echo $student->get_address_street(); ?>" required>
                                 </div>
-                                <div class="control control-col width-6">
+                                <div class="control control-col col-6">
                                     <label for="student-address-number">Número</label>
                                     <input type="text" id="student-address-number" name="number" minlength="1" maxlength="12" value="<?php echo $student->get_address_number(); ?>" required>
                                 </div>
                             </div>
                             <div class="control-row">
-                                <div class="control control-col width-6">
+                                <div class="control control-col col-6">
                                     <label for="student-address-district">Colonia</label>
                                     <input type="text" id="student-address-district" name="district" minlength="2" maxlength="24" value="<?php echo $student->get_address_district(); ?>" required>
                                 </div>
-                                <div class="control control-col width-6">
+                                <div class="control control-col col-6">
                                     <label for="student-address-zip">Código Postal</label>
                                     <input type="text" id="student-address-zip" name="zip" minlength="5" maxlength="5" value="<?php echo $student->get_address_zip(); ?>" required>
                                 </div>
                             </div>
                         </div>
                         <div class="dialog-footer">
-                            <input type="submit" value="Actualizar">
+                            <div class="control-row">
+                                <div class="control control-col col-4">
+                                    <button type="submit">Actualizar</button>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </dialog>
-                <dialog id="set-ssn-dialog">
+                <dialog id="set-ssn-dialog" class="col-4">
                     <form id="set-ssn-form" action="#" method="dialog" onsubmit="onSetSsnFormSubmitted(event)">
                         <!--Agrega un campo oculto para almacenar la matricula del estudiante-->
                         <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
@@ -420,25 +545,53 @@
                             <h2>Establecer Número de Seguro Social (NSS)</h2>
                         </div>
                         <div class="dialog-body">
-                            <div id="set-ssn-error" class="alert alert-danger" hidden>
-                                <span>
-                                    <strong>Atención:</strong> No se pudo actualizar el valor.
-                                </span>
-                            </div>
                             <div class="control-row">
-                                <div class="control control-col width-12">
+                                <div class="control control-col col-12">
                                     <label for="student-address-street">NSS</label>
                                     <input type="text" id="student-address-street" name="ssn" minlength="11" maxlength="11" required>
                                 </div>
                             </div>
                         </div>
                         <div class="dialog-footer">
-                            <input type="submit" value="Establecer">
+                            <div class="control-row">
+                                <div class="control control-col col-4">
+                                    <button type="submit">Establecer</button>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </dialog>
-                <dialog id="withdraw-dialog">
-                    
+                <dialog id="withdraw-dialog" class="col-3">
+                    <form id="withdraw-form" action="#" method="dialog" onsubmit="onWithdrawFormSubmitted(event)">
+                        <!--Agrega un campo oculto para almacenar la matricula del estudiante-->
+                        <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
+                        <div class="dialog-header">
+                            <span class="dialog-close-btn">&times;</span>
+                            <h2>Dar de baja</h2>
+                        </div>
+                        <div class="dialog-body">
+                            <p>Razón</p>
+                            <div class="control-row">
+                                <input type="radio" id="withdraw-option" name="reason" value="3">
+                                <label for="withdraw-option">Solicitado por tutor</label>
+                            </div>
+                            <div class="control-row">
+                                <input type="radio" id="graduated-reason" name="reason" value="2">
+                                <label for="graduated-reason">Graduación</label>
+                            </div>
+                            <div class="control-row">
+                                <input type="radio" id="dimissed-reason" name="reason" value="4">
+                                <label for="dimissed-reason">Falta de pago</label>
+                            </div>
+                        </div>
+                        <div class="dialog-footer">
+                            <div class="control-row">
+                                <div class="control control-col col-12">
+                                    <button type="submit">Establecer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </dialog>
             <?php } else if ($is_search_mode_enabled) {; ?>
                 <div class="card">
@@ -447,12 +600,38 @@
                     </div>
                     <div class="card-body">
                         <div class="control-row">
-                            <div class="control control-col width-12">
+                            <div class="control control-col col-12">
                                 <label for="search-term">Término de búsqueda</label>
-                                <input type="text" id="search-term" maxlength="32" onkeyup="searchStudents(this.value)">    
+                                <input type="text" id="search-term" placeholder="Ingrese una matrícula, nombre, apellido, CURP..." maxlength="32" onkeyup="searchStudents(this.value)">    
                             </div>
                         </div>
                         <div class="control-row" id="search-results">
+                            <table id="search-student-results-table" hidden>
+                                <template id="found-student-row-template">
+                                    <tr>
+                                        <td data-field-name="student_id"></td>
+                                        <td data-field-name="full_name"></td>
+                                        <td data-field-name="curp"></td>
+                                        <td data-field-name="group"></td>
+                                        <td data-field-name="actions">
+                                            <button type="button" class="btn-icon" data-action-name="view" title="Ver">
+                                                <i class="fa-solid fa-user"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <thead>
+                                    <tr>
+                                        <th>Matrícula</th>
+                                        <th>Nombre</th>
+                                        <th>CURP</th>
+                                        <th>Grupo</th>
+                                        <th class="one-action-th"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

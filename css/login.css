@@ -1,0 +1,26 @@
+body {
+    background-color: var(--white-smoke);
+}
+
+#content {
+    padding-top: 8%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#login {
+    background-color: var(--white);
+    border-color: var(--raisin-black);
+}
+
+.login-logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.login-logo img {
+    height: 120px;
+}

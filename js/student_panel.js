@@ -10,6 +10,14 @@ function openSetSsnDialog() {
     document.getElementById('set-ssn-error').hidden = true;
 }
 
+function openWithdrawDialog() {
+    showDialog('withdraw-dialog');
+}
+
+function openNewPaymentDialog(studentId) {
+    window.location.href = 'payment_panel.php?student_id=' + studentId;
+}
+
 // abre el cuadro de diálogo para ver la información de un tutor
 function openViewTutorInfo(tutorId) {
     // obtiene el índice del objeto con la información del tutor
@@ -96,24 +104,47 @@ function searchStudents(query) {
 
 // muestra los resultados de búsqueda
 function showFoundStudents(results) {
-    const resultsTable = document.getElementById('search-results');
-    const baseUrl = window.location.origin + 
-        window.location.pathname + 
-        '?student_id=';
-    
-    while (resultsTable.childElementCount > 0) {
-        resultsTable.firstElementChild.remove();
-    }
+    const table = document.getElementById('search-student-results-table');
+    const tbody = table.querySelector('tbody');
+    const template = document.getElementById('found-student-row-template');
 
+    while (tbody.childElementCount > 0) {
+        tbody.firstElementChild.remove();
+    }
+    
     for (let i = 0; i < results.length; i++) {
         const item = results[i];
-        const element = document.createElement('p');
-        const link = document.createElement('a');
+        const curp = item['curp'];
+        const educationLevel = item['education_level'];
+        const fullName = item['full_name'];
+        const group = item['group'];
+        const studentId = item['student_id'];
 
-        link.innerText = item['full_name'];
-        link.setAttribute('href', baseUrl + item['student_id']);
-        element.append(link);
-        resultsTable.append(element);
+        tbody.appendChild(template.content.cloneNode(true));
+        let addedRow = tbody.lastElementChild;
+
+        let curpField = addedRow.querySelector('[data-field-name=\'curp\']');
+        let fullNameField = addedRow.querySelector('[data-field-name=\'full_name\']');
+        let groupField = addedRow.querySelector('[data-field-name=\'group\']');
+        let studentIdField = addedRow.querySelector('[data-field-name=\'student_id\']');
+        let viewButton = addedRow.querySelector('[data-action-name=\'view\']');
+
+        curpField.textContent = curp;
+        fullNameField.textContent = fullName;
+        groupField.textContent = educationLevel + ' ' + group;
+        studentIdField.textContent = studentId;
+        viewButton.setAttribute('data-action-arg', studentId);
+        viewButton.onclick = function() {
+            window.location.href = window.location.origin + 
+                window.location.pathname + 
+                '?student_id=' + this.getAttribute('data-action-arg');
+        };
+    }
+
+    if (results.length > 0) {
+        table.hidden = false;
+    } else {
+        table.hidden = true;
     }
 }
 
@@ -130,6 +161,26 @@ function viewPayment(paymentId) {
 }
 
 /* manejo de eventos */
+
+function onYearFilterSelectInput(event) {
+    const selectedYear = document.getElementById('year-filter-select').value;
+    const table = document.getElementById('payments-table');
+    const rows = table.querySelectorAll('tbody tr');
+
+    rows.forEach(row => {
+        const paymentYear = row.getAttribute('data-payment-year');
+
+        // si el selector de filtro de año esta en 'Todos' o el año establecido
+        // en la fila coincide con el del selector, entonces se muestra la fila
+        if (selectedYear === 'all' || selectedYear === paymentYear) {
+            row.hidden = false;
+        }
+        // de lo contrario
+        else {
+            row.hidden = true
+        }
+    });
+}
 
 // maneja la actualización del número de seguro social
 function onSetSsnFormSubmitted(event) {
@@ -246,13 +297,55 @@ function onEditTutorContactFormSubmitted(event) {
                 window.location.reload();
             } else {
                 // imprime el mensaje de error
-                console.warn('Error:', data['message']);
+                console.warn('Error:', response['message']);
             }
         }
     };
 
     // establece el tipo de método y la URL de la petición
     xhr.open('POST', 'actions/update_tutor_contact.php');
+    // envia la petición junto con los datos del formulario
+    xhr.send(formData);
+}
+
+// maneja la actualización del contacto de un tutor
+function onWithdrawFormSubmitted(event) {
+    // previene el comportamiento predeterminado
+    event.preventDefault();
+    // obtiene el formulario
+    const form = document.getElementById('withdraw-form');
+    
+    // TODO: agregar validación de datos antes de enviarlos
+    
+    /* A partir de este punto la información ya está validada */
+    
+    // crea un nuevo objeto FormData
+    const formData = new FormData(form);
+
+    // crea un cliente para realizar peticiones HTTP
+    let xhr = new XMLHttpRequest();
+    // establece un manejador cuando se recibe una respuesta del servidor
+    xhr.onreadystatechange = function () {
+        // verifica si el estado del cliente es completa y si el código de
+        // respuesta es válido (200)
+        if (this.readyState == XMLHttpRequest.DONE && this.status == 200) {
+            // obtiene la respuesta en formato json
+            let response = JSON.parse(this.responseText);
+            
+            // verifica si el resultado de la operación en la base de
+            // datos fue existos
+            if (response['status'] === 'ok') {
+                // recarga la página para mostrar los cambios hechos
+                window.location.reload();
+            } else {
+                // imprime el mensaje de error
+                console.warn('Error:', response['message']);
+            }
+        }
+    };
+
+    // establece el tipo de método y la URL de la petición
+    xhr.open('POST', 'actions/withdraw_student.php');
     // envia la petición junto con los datos del formulario
     xhr.send(formData);
 }

@@ -11,21 +11,29 @@ $response = null;
 // verifica que el método de la petición sea POST
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // verifica si los campos requeridos están definidos
-    if (isset($_POST['student_id'], $_POST['ssn'])) {
+    if (isset($_POST['student_id'], $_POST['reason'])) {
         try {
             // obtiene los valores de los campos y los limpia
             $student_id = sanitize($_POST['student_id']);
-            $ssn = sanitize($_POST['ssn']);
+            $reason = intval(sanitize($_POST['reason']));
             
             // crea un objeto alumno
             $student = new Student($student_id);
-            $student->set_ssn($ssn);
             
-            // llama a la función para actualizar el valor
-            $student->update_ssn();
-            
-            // crea un objeto de respuesta según sea el caso
-            $response = new QueryResponse(QueryResponse::OK);
+            // verifica la razón de la baja
+            switch ($reason) {
+                case EnrollmentStatus::DISMISSED:
+                case EnrollmentStatus::GRADUATED:
+                case EnrollmentStatus::WITHDRAWN:
+                    // llama a la función para dar de baja
+                    $student->withdraw($reason);
+                    // crea un objeto de respuesta según sea el caso
+                    $response = new QueryResponse(QueryResponse::OK);
+                    break;
+                default:
+                    $response = QueryResponse::error('Invalid status code');
+                    break;
+            }
         } catch (mysqli_sql_exception $ex) {
             $response = $response = QueryResponse::error($ex->getMessage());
         }

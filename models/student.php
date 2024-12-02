@@ -92,7 +92,15 @@ final class Student extends Person {
              total AS total_amount,
              cantidad_cuotas AS fee_count
          FROM pagos
-         WHERE alumno = ?';
+         WHERE alumno = ?
+         ORDER BY fecha DESC';
+
+    private static $select_payment_years =
+        'SELECT
+            DISTINCT YEAR(fecha) AS year
+         FROM pagos
+         WHERE alumno = ?
+         ORDER BY fecha DESC';
 
     private static $insert = 
         'CALL sp_registrar_alumno(?,?,?,?,?,?,?,?,?,?,?, @student_id)';
@@ -109,6 +117,27 @@ final class Student extends Person {
         'UPDATE alumnos 
          SET nss = ?
          WHERE matricula = ?';
+
+    private static $withdraw = 
+        'UPDATE alumnos SET 
+            estado = ?,
+            fecha_baja = CURDATE()
+         WHERE matricula = ?';
+
+    private static $insert_cureent_pic = 
+        'INSERT INTO fotos VALUES (?, fn_obtener_ciclo_escolar_actual(), ?)';
+
+    private static $delete_current_pic = 
+        'DELETE FROM fotos 
+         WHERE alumno = ? 
+         AND ciclo = fn_obtener_ciclo_escolar_actual';
+
+    private static $get_current_pic =
+        'SELECT f.nombre_archivo AS file_name
+         FROM fotos AS f
+         INNER JOIN alumnos AS a ON f.alumno = a.matricula
+         WHERE a.matricula = ? 
+         AND f.ciclo = fn_obtener_ciclo_escolar_actual()';
 
     // attributes
     private $student_id;
@@ -266,6 +295,30 @@ final class Student extends Person {
         return $payments;
     }
 
+    public function get_payment_years(MySqlConnection $conn = null): array {
+        // declara un arreglo vacío
+        $years = [];
+        // verifica si se recibió una conexión
+        if ($conn === null) {
+            $conn = new MySqlConnection();
+        }
+
+        // crea una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->student_id);
+        
+        // realiza la consulta
+        $resultset = $conn->query(self::$select_payment_years, $param_list);
+        
+        // procesa los registros
+        foreach ($resultset as $row) {
+            // agrega el registro al arreglo
+            $years[] = $row['year'];
+        }
+        
+        return $years;
+    }
+
     public function get_groups(MySqlConnection $conn = null): array {
         // declara un arreglo vacío
         $groups = [];
@@ -380,6 +433,82 @@ final class Student extends Person {
 
         //ejecuta la consulta
         $conn->query(self::$update_ssn, $param_list);
+    }
+
+    public function withdraw(
+        int $reason, 
+        MySqlConnection $conn = null
+    ) : void {
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
+        }
+
+        // crea la lista de parámetros con los datos provistos
+        $param_list = new MySqlParamList();
+        $param_list->add('i', $reason);
+        $param_list->add('s', $this->student_id);
+
+        //ejecuta la consulta
+        $conn->query(self::$withdraw, $param_list);
+    }
+
+    public function register_current_pic(
+        string $picture_name,
+        MySqlConnection $conn = null
+    ) : void {
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
+        }
+
+        // crea la lista de parámetros con los datos provistos
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->student_id);
+        $param_list->add('s', $picture_name);
+
+        //ejecuta la consulta
+        $conn->query(self::$insert_cureent_pic, $param_list);
+    }
+
+    public function delete_current_pic(
+        MySqlConnection $conn = null
+    ) : void {
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
+        }
+
+        // crea la lista de parámetros con los datos provistos
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->student_id);
+
+        //ejecuta la consulta
+        $conn->query(self::$delete_current_pic, $param_list);
+    }
+
+    public function get_current_pic(MySqlConnection $conn = null) : string|null {
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
+        }
+
+        // crea la lista de parámetros con los datos provistos
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->student_id);
+
+        //ejecuta la consulta
+        $resultset = $conn->query(self::$select_current_group, $param_list);
+
+        if (count($resultset) == 1) {
+            return $resultset[0]['file_name'];
+        }
+
+        return null;
     }
 
     public function to_array(): array {

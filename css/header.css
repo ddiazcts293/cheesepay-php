@@ -1,0 +1,97 @@
+/* Header */
+
+header {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 40px;
+    background: var(--header-bg);
+    z-index: 9999;
+}
+
+.header-left, .header-right {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.header-left {
+    float: left;
+}
+
+.header-right {
+    float: right;
+}
+
+.header-menu, .header-logo {
+    position: relative;
+    float: left;
+    width: 20px;
+    height: 20px;
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+}
+
+.header-menu i {
+    font-size: 12pt;
+    color: var(--header-element-fg);
+    cursor: pointer;
+}
+
+.header-menu i:hover, .header-menu i:focus {
+    color: var(--header-element-focus-fg);
+}
+
+.header-logo {
+    height: 30px;
+    width: 30px;
+}
+
+.header-logo img{
+    height: 100%;
+}
+
+.user-photo, .user-icons {
+    position: relative;
+    float: left;
+    width: 20px;
+    height: 20px;
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+}
+
+.user-photo {
+    width: 28px;
+    height: 28px;
+    margin-right: 10px;
+}
+
+.user-photo img {
+    height: 100%;
+    border-radius: 12px;
+}
+
+.user-icons {
+    width: 60px;
+}
+
+.user-icons i {
+    margin-right: 10px;
+    font-size: 12pt;
+    color: var(--header-element-fg);
+}
+
+.user-icons i:focus, .user-icons i:hover {
+    color: var(--header-element-focus-fg)
+}
+
+#content {
+    height: calc(100% - 40px);
+    top: 40px;
+}

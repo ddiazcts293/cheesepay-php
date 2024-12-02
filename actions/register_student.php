@@ -146,11 +146,10 @@ function register_student(array $student_info) : QueryResponse {
 
         // devuelve una respuesta
         return QueryResponse::ok($response);
-    } catch (mysqli_sql_exception $e) {
+    } catch (mysqli_sql_exception|Exception $e) {
         // revierte la transacción
         $db_conn->rollback();
-        // devuelve el mensaje de error
-
+        // devuelve el mensaje de error como respuesta
         return QueryResponse::error($e->getMessage());
     }
 }

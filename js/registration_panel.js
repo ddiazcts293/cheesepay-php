@@ -13,10 +13,6 @@ function openRegisterTutorDialog() {
     form.reset();
     form['event_type'].value = 'registration';
 
-    // hace visible el botón de registrar y oculta el de actualizar
-    showElement('register-tutor-dialog-button');
-    hideElement('update-tutor-dialog-button');
-
     // muestra el dialogo
     showDialog('register-tutor-dialog');
 }
@@ -37,6 +33,8 @@ function changeEducationLevel() {
     const gradeInput = document.getElementById('student-grade');
     // obtiene el selector de grupo
     const groupSelector = document.getElementById('student-group');
+    // obtiene el selector de fecha de nacimiento
+    const birthDateSelector = document.getElementById('student-birth-date');
     
     // recorre los niveles educativos hasta encontrar uno que esté asociado al
     // código recibido
@@ -51,6 +49,15 @@ function changeEducationLevel() {
             gradeInput.max = maxGrade;
             gradeInput.removeAttribute('disabled');
             groupSelector.removeAttribute('disabled');
+            birthDateSelector.removeAttribute('disabled');
+
+            // calcula las fecha máxima y mínima
+            let maxDate = new Date(new Date(Date.now()).setMonth(-11 * minimumAge));
+            let minDate = new Date(new Date(Date.now()).setMonth(-11 * maximumAge));
+
+            // establece los límites de fechas
+            //dateOfBirhtSelector.min = minDate.toISOString().substring(0,10);
+            //dateOfBirhtSelector.max = maxDate.toISOString().substring(0, 10);
 
             // carga los grupos para el grado seleccionado
             changeGrade();
@@ -206,10 +213,6 @@ function editStudentTutor(rowId) {
         form['email'].value = tutorData['email'];
         form['phone_number'].value = tutorData['phone_number'];
         
-        // hace visible el botón de actualizar y oculta el de registrar
-        hideElement('register-tutor-dialog-button');
-        showElement('update-tutor-dialog-button');
-
         // muestra el dialogo
         showDialog('register-tutor-dialog');
     }
@@ -311,6 +314,8 @@ function updateTutorSection() {
 
 // actualiza el estado del botón para enviar el formulario
 function updateSubmitButtonStatus() {
+    // obtiene los elementos clave cuyos valores seleccionados determinan el
+    // estado del botón
     const submitButton = document.getElementById('registration-form-submit');
     const educationLevelSelect = document.getElementById('student-education-level');
     const groupSelect = document.getElementById('student-group');
@@ -318,18 +323,24 @@ function updateSubmitButtonStatus() {
     const tutorsTable = document.getElementById('student-tutors-table');
     const tutorRows = tutorsTable.querySelectorAll('tbody tr');
 
+    // determina si el botón de envío debe estar activo, para lo cual, se debe
+    // tener seleccionado un nivel educativo, un grupo, un género y la cantidad
+    // de tutores debe ser mayor que cero
     let enableSubmit = educationLevelSelect.value !== 'none' &&
         groupSelect.value !== 'none' &&
         genderSelect.value !== 'none' &&
         tutorRows.length > 0;
 
+    // para cada fila en la tabla tutores, determina si el botón debe estar
+    // activo basándose en que si el parentesco para el tutor está establecido
     for (let i = 0; i < tutorRows.length; i++) {
         const row = tutorRows[i];
         const relationshipSelect = row.querySelector('td select');
 
-        enableSubmit = enableSubmit && (relationshipSelect.value !== 'none');
+        enableSubmit &= (relationshipSelect.value !== 'none');
     }
     
+    // habilita/deshabilita el botón
     if (enableSubmit) {
         submitButton.removeAttribute('disabled');
     } else {
@@ -339,7 +350,7 @@ function updateSubmitButtonStatus() {
 
 /* manejo de eventos de formularios */
 
-// cuando se envía el formulario de prevalidación de CURP
+// es llamado cuando se envía el formulario de prevalidación de CURP
 function onPrevalidationFormSubmitted(event) {
     // previene el comportamiento predeterminado
     event.preventDefault();
@@ -389,7 +400,7 @@ function onPrevalidationFormSubmitted(event) {
     xhr.send();
 }
 
-// cuando se envía el formulario de registro de un nuevo tutor
+// es llamado cuando se envía el formulario de registro de un nuevo tutor
 function onRegisterTutorFormSubmitted(event) {
     // obtiene el formulario
     const form = event.target;
@@ -422,6 +433,7 @@ function onRegisterTutorFormSubmitted(event) {
     // obtiene el tipo de evento por el cual se abrió el formulario
     const eventType = form['event_type'].value;
     
+    // procesa el tipo de evento que originó la apertura del formulario
     switch (eventType) {
         case 'registration':
             // agrega el tutor a la lista de tutores registrados
@@ -436,7 +448,7 @@ function onRegisterTutorFormSubmitted(event) {
     }
 }
 
-// cuando se envía el formulario de registro de alumno
+// es llamado cuando se envía el formulario de registro de alumno
 function onRegistrationFormSubmitted(event) {
     // obtiene el formulario
     const form = event.target;
@@ -515,7 +527,7 @@ function onRegistrationFormSubmitted(event) {
     form['new_student_info'].value = JSON.stringify(studentData);
 }
 
-// cuando se restablece el formulario de registro de alumno
+// es llamado cuando se restablece el formulario de registro de alumno
 function onRegistrationFormReset(event) {
     console.log('hello');
 }

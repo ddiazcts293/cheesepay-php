@@ -16,7 +16,7 @@ if ($are_params_set) {
     $confirm_password = $_POST['confirm_password'];
 
     if ($new_password != $confirm_password) {
-        header('Location: /user_panel.php?event_type=password-mismatch');
+        header('Location: /user_panel.php?event_type=password_mismatch');
     } else {
         $success = User::change_password($user_id, $current_password, $new_password);
         if ($success) {
@@ -28,12 +28,11 @@ if ($are_params_set) {
     
             // inicia una nueva sesion
             session_start();
-            $_SESSION['full_name'] = $user->get_full_name();
             $_SESSION['token'] = $user->get_auth_token();
     
-            header('Location: /user_panel.php?event_type=change-password-successfully');
+            header('Location: /user_panel.php?event_type=change_password_successfully');
         } else {
-            header('Location: /user_panel.php?event_type=change-password-failed');
+            header('Location: /user_panel.php?event_type=change_password_failed');
         }
     }
 }

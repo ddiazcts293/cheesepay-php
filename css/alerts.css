@@ -12,10 +12,10 @@
 .alert {
     position: relative;
     float: left;
-    width: calc(100% - 48px);
+    width: calc(100% - 16px);
     margin: 8px;
     padding: 8px 16px 8px 16px;
-    border-radius: 2px;
+    border-radius: 4px;
     opacity: 1;
     transition: opacity 0.6s;
 }
@@ -48,7 +48,7 @@
     float: right;
     font-size: 22px;
     font-weight: bold;
-    line-height: 20px;
+    line-height: 18px;
     margin-left: 16px;
     transition: 0.3s;
 }
@@ -56,4 +56,10 @@
 .alert-close-btn:hover,
 .alert-close-btn:focus {
     cursor: pointer;
+}
+
+.card .alert {
+    margin-left: 4px;
+    margin-right: 4px;
+    width: calc(100% - 8px);
 }
