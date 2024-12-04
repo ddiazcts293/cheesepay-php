@@ -18,6 +18,7 @@
         $current_group = null;
         $pic_file_name = null;
         $enrollment_status_id = EnrollmentStatus::ENROLLED;
+        $re_enrollment_groups = [];
 
         // declara una variable para indicar si está habilitado el modo de búscqueda
         $is_search_mode_enabled = true;
@@ -49,6 +50,15 @@
                         $payment_years = $student->get_payment_years($conn);
                         $pic_file_name = $student->get_current_pic($conn);
                         $enrollment_status_id = $student->get_enrollment_status()->get_number();
+
+                        if ($enrollment_status_id === EnrollmentStatus::WITHDRAWN || 
+                            $enrollment_status_id === EnrollmentStatus::DISMISSED) {
+                            $current_group = $student->get_last_group($conn);
+                            $re_enrollment_groups = Group::get_re_enrollment_groups(
+                                $current_group->get_grade(),
+                                $current_group->get_education_level()->get_code()
+                            );
+                        }
                     }
 
                     // confirma la transacción
@@ -678,24 +688,13 @@
                         </div>
                         <div class="dialog-body">
                             <div class="control-row">
-                                <div class="control control-col col-6">
-                                    <label for="re-enrollment-education-level">Nivel educativo</label>
-                                    <select id="re-enrollment-education-level" name="education_level_id" required oninput="changeEducationLevel()">
-                                        <option value="none" selected disabled>Seleccione uno</option>
-                                        <?php foreach (EducationLevel::get_all() as $level) {; ?>
-                                            <option value="<?php echo $level->get_code(); ?>">
-                                                <?php echo $level->get_description(); ?>
-                                            </option>
-                                        <?php }; ?>
-                                    </select>
-                                </div>
-                                <div class="control control-col col-6">
+                                <div class="control control-col col-12">
                                     <label for="re-enrollment-group">Grupo</label>
-                                    <select id="re-enrollment-group" name="group_id" required disabled oninput="changeGroup()">
+                                    <select id="re-enrollment-group" name="group_id" required oninput="changeGroup()">
                                         <option value="none" selected disabled>Seleccione uno</option>
-                                        <?php foreach (SchoolYear::get()->get_groups() as $group) { if ($group instanceof Group) {; ?>
-                                            <option hidden data-level="<?php echo $group->get_education_level()->get_code(); ?>" value="<?php echo $group->get_number(); ?>">
-                                                <?php echo $group; ?>
+                                        <?php foreach ($re_enrollment_groups as $group) { if ($group instanceof Group) {; ?>
+                                            <option value="<?php echo $group->get_number(); ?>">
+                                                <?php echo $group->get_education_level()->get_description() . ' ' . $group; ?>
                                             </option>
                                         <?php } }; ?>
                                     </select>

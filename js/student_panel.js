@@ -175,33 +175,6 @@ function viewPayment(paymentId) {
     window.location.href = 'payment_panel.php?payment_id=' + paymentId;
 }
 
-function changeEducationLevel() {
-    const educationLevelSelect = document.getElementById('re-enrollment-education-level');
-    const groupSelect = document.getElementById('re-enrollment-group');
-    const submitButton = document.getElementById('re-enrollment-submit');
-    const groupOptions = groupSelect.querySelectorAll('option');
-    const selectedValue = educationLevelSelect.value;
-
-    if (selectedValue !== 'none') {
-        // habilita el selector de grupo 
-        groupSelect.removeAttribute('disabled');
-        //filtra los grupos
-        groupOptions.forEach(option => {
-            const level = option.getAttribute('data-level');
-            if (level !== null) {
-                option.hidden = level !== selectedValue;
-            }
-        });
-
-        groupSelect.value = null;
-    }
-    // de lo contrario deshabilita el selector de grupo y el botón de continuar
-    else {
-        groupSelect.setAttribute('disabled', true);
-        submitButton.setAttribute('disabled', true);
-    }
-}
-
 function changeGroup() {
     const groupSelect = document.getElementById('re-enrollment-group');
     const submitButton = document.getElementById('re-enrollment-submit');

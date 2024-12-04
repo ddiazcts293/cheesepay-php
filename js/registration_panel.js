@@ -391,6 +391,10 @@ function onPrevalidationFormSubmitted(event) {
                 if (isRegistered === true) {
                     // muestra la alerta de prevalidación fallida
                     showAlert('prevalidation-failed');
+                    const link = document.getElementById('student_url');
+                    const id = response['student']['student_id'];
+
+                    link.setAttribute('href', 'student_panel.php?student_id=' + id);
                 } else {
                     // oculta la alerta de prevalidación fallida
                     hideAlert('prevalidation-failed');

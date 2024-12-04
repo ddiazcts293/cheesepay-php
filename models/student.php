@@ -84,6 +84,26 @@ final class Student extends Person {
          INNER JOIN niveles_educativos AS ne ON ga.nivel_educativo = ne.codigo
          WHERE ga.alumno = ?
          AND ga.ciclo = fn_obtener_ciclo_escolar_actual()';
+        
+    private static $select_last_group =
+        'SELECT
+             ga.grupo AS group_id,
+             ga.grado AS grade,
+             ga.letra AS letter,
+             ga.ciclo AS school_year_id,
+             ce.fecha_inicio AS school_year_starting_date,
+             ce.fecha_fin AS school_year_ending_date,
+             ne.codigo AS education_level_id,
+             ne.descripcion AS education_level_name,
+             ne.edad_minima AS education_level_min_age,
+             ne.edad_maxima AS education_level_max_age,
+             ne.cantidad_grados AS education_level_grade_count
+         FROM vw_grupo_alumnos AS ga
+         INNER JOIN ciclos_escolares AS ce ON ga.ciclo = ce.codigo
+         INNER JOIN niveles_educativos AS ne ON ga.nivel_educativo = ne.codigo
+         WHERE ga.alumno = ?
+         ORDER BY ga.grupo DESC
+         LIMIT 1';
 
     private static $select_payments = 
         'SELECT 
@@ -408,6 +428,47 @@ final class Student extends Person {
             );
         }
 
+        return $group;
+    }
+
+
+    public function get_last_group(MySqlConnection $conn = null) : Group {
+        // declara una variable para almacenar el grupo
+        $group = null;
+        // verifica si se recibió una conexión
+        if ($conn === null) {
+            $conn = new MySqlConnection();
+        }
+
+        // crea una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->student_id);
+        
+        // realiza la consulta
+        $resultset = $conn->query(self::$select_last_group, $param_list);
+        // procesa los registros
+
+        // obtiene la fila
+        $row = $resultset[0];
+        // crea un nuevo objeto grupo con los datos obtenidos
+        $group = new Group(
+            $row['group_id'],
+            $row['grade'],
+            $row['letter'],
+            new SchoolYear(
+                $row['school_year_id'],
+                $row['school_year_starting_date'],
+                $row['school_year_ending_date']
+            ),
+            new EducationLevel(
+                $row['education_level_id'],
+                $row['education_level_name'],
+                $row['education_level_min_age'],
+                $row['education_level_max_age'],
+                $row['education_level_grade_count']
+            )
+        );
+    
         return $group;
     }
 

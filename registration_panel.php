@@ -128,7 +128,7 @@
             <!--Alertas que aparecene en la parte superior-->
             <div id="prevalidation-failed" class="alert alert-warning alert-hidden">
                 <span class="alert-close-btn">&times;</span>
-                <span>La CURP ingresada ya pertenece a un alumno registrado.</span>
+                <span>La CURP ingresada ya pertenece a un alumno registrado. <a href="" id="student_url">Ver registro</a></span>
             </div>
             <div id="prevalidation-success" class="alert alert-success alert-hidden">
                 <span class="alert-close-btn">&times;</span>

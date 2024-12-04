@@ -75,11 +75,11 @@
                     $status = $student->get_status($conn);
 
                     // verifica si el estudiante no se encuentra activo
-                    if (!$status->is_active() && isset($_GET['education_level_id'], $_GET['group_id'])) {
-                        // obtiene el nivel educativo a reinscribir
-                        $education_level_id = sanitize($_GET['education_level_id']);
+                    if (!$status->is_active() && isset($_GET['group_id'])) {
                         // obtiene el grupo a reinscribir
                         $current_group = Group::get(sanitize($_GET['group_id']));
+                        // obtiene el nivel educativo a reinscribir
+                        $education_level_id = $current_group->get_education_level()->get_code();
                         
                         if ($current_group === null) {
                             die('Invalid request');

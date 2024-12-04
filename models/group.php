@@ -27,6 +27,24 @@ final class Group extends BaseObject {
             cantidad_alumnos AS student_count 
          FROM vw_grupos';
 
+    private static $select_re_enrollment_groups = 
+        'SELECT 
+            g.numero AS number,
+            g.grado AS grade,
+            g.letra AS letter,
+            g.nivel_educativo AS education_level,
+            g.ciclo AS school_year
+         FROM grupos AS g
+         LEFT JOIN vw_grados_subsecuentes AS gs ON (
+            g.grado = gs.grado_subsecuente AND g.nivel_educativo = gs.nivel_subsecuente
+        )
+         WHERE g.ciclo = fn_obtener_ciclo_escolar_actual()
+         AND (
+            (g.grado = ? AND g.nivel_educativo = ?)
+            OR
+            (gs.grado_cursado = ? AND gs.nivel_cursado = ?)
+         )';
+
     private static $select_students = 
         'SELECT
             a.matricula AS student_id,
@@ -181,6 +199,51 @@ final class Group extends BaseObject {
                 $year,
                 $level,
                 $row['student_count']
+            );
+        }
+    
+        return $result;
+    }
+    
+    public static function get_re_enrollment_groups(
+        int $grade,
+        string $education_level_id,
+        MySqlConnection $conn = null
+    ) : array {
+        // declara una variable para almacenar el resultado
+        $result = [];
+
+        // verifica si se recibió una conexión previamente iniciada
+        if ($conn === null) {
+            // crea una nueva conexión
+            $conn = new MySqlConnection();
+        }
+
+        // crea una lista de parámetros
+        $param_list = new MySqlParamList();
+        $param_list->add('i', $grade);
+        $param_list->add('s', $education_level_id);
+        $param_list->add('i', $grade);
+        $param_list->add('s', $education_level_id);
+
+        // realiza la consulta para un solo nivel educativo
+        $resultset = $conn->query(self::$select_re_enrollment_groups, $param_list);
+    
+        // verifica si el arreglo contiene un registro
+        foreach ($resultset as $row) {
+            // procesa el resultado obtenido
+            // obtiene el nivel educativo y ciclo escolar asociados
+            $level = EducationLevel::get($row['education_level'], $conn);
+            $year = SchoolYear::get($row['school_year'], $conn);
+
+            // agrega el registro al arreglo
+            $result[] = new Group(
+                $row['number'],
+                $row['grade'],
+                $row['letter'],
+                $year,
+                $level,
+                0
             );
         }
     
