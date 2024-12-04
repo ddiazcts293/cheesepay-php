@@ -56,6 +56,13 @@ final class Group extends BaseObject {
     private static $insert_gruop_student =
         'INSERT INTO grupo_alumnos VALUES (?,?)';
 
+    private static $select_check_if_student_is_enrolled = 
+        'SELECT EXISTS (
+            SELECT *
+            FROM grupo_alumnos
+            WHERE grupo = ? AND alumno = ?
+        ) AS is_enrolled';
+
     // attributes
     private $number;
     private $grade;
@@ -247,7 +254,16 @@ final class Group extends BaseObject {
         $param_list->add('i', $group_number);
         $param_list->add('s', $student_id);
 
-        // realiza la consulta
-        $conn->query(self::$insert_gruop_student, $param_list);
+        // realiza la consulta de verificación
+        $resultset = $conn->query(
+            self::$select_check_if_student_is_enrolled, 
+            $param_list
+        );
+
+        // verifica si el alumno no estaba inscrito en el grupo anteriomente
+        if (!$resultset[0]['is_enrolled']) {
+            // realiza la consulta
+            $conn->query(self::$insert_gruop_student, $param_list);
+        }
     }
 }

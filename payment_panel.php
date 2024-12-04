@@ -21,6 +21,7 @@
         // indicadores de comportamiento
         $is_registering_new_student = false;
         $is_read_only = false;
+        $is_re_enrollment = false;
         
         // información de inscripción y cuotas
         $new_student_info = null;
@@ -71,6 +72,35 @@
                     $tutors = $student->get_tutors($conn);
                     $current_group = $student->get_current_group();
                     $enrollment_status_id = $student->get_enrollment_status()->get_number();
+                    $status = $student->get_status($conn);
+
+                    // verifica si el estudiante no se encuentra activo
+                    if (!$status->is_active() && isset($_GET['education_level_id'], $_GET['group_id'])) {
+                        // obtiene el nivel educativo a reinscribir
+                        $education_level_id = sanitize($_GET['education_level_id']);
+                        // obtiene el grupo a reinscribir
+                        $current_group = Group::get(sanitize($_GET['group_id']));
+                        
+                        if ($current_group === null) {
+                            die('Invalid request');
+                        }
+
+                        $grade = $current_group->get_grade();
+
+                        // agregar las cuotas de pago de inscripción y mensualidad
+                        $fees[] = $school_year->get_enrollment_fee($education_level_id, $conn);
+                        if (!$status->has_paid_maintenance()) {
+                            $fees[] = $school_year->get_maintenance_fee($conn);
+                        }
+                        if (!$status->is_up_to_date()) {
+                            $fees[] = MonthlyFee::get_next($education_level_id, $conn);
+                        }
+                        if (!$status->has_paid_stationery()) {
+                            $fees[] = $school_year->get_stationery_fee($education_level_id, $grade, $conn);
+                        }
+
+                        $is_re_enrollment = true;
+                    }
                 }
             }
             // de lo contrario termina la ejecución de código
@@ -191,24 +221,29 @@
         <script>
             // establece si el alumno es nuevo
             const isNewStudent = <?php echo $is_registering_new_student ? 'true' : 'false'; ?>;
+            const isReEnrollment = <?php echo $is_re_enrollment ? 'true' : 'false'; ?>;
             // establece la matrícula del alumno
             const studentId = '<?php echo ($student !== null) ? $student->get_student_id() : 0; ?>';
-            
+            // almacena la lista de cuotas predeterminadas
+            const defaultFeeList = JSON.parse('<?php echo array_to_json($fees); ?>');
+
             // verifica si se está registrando a un nuevo alumno
             <?php if ($is_registering_new_student) {; ?>
                 // almacena la información de un nuevo alumno
                 const newStudentInfo = JSON.parse('<?php echo json_encode($new_student_info); ?>');
                 // almacena la información de la inscripción
                 const enrollmentInfo = JSON.parse('<?php echo json_encode($enrollment_info); ?>');
-                // almacena la lista de cuotas predeterminadas para un nuevo alumno
-                const defaultFeeList = JSON.parse('<?php echo array_to_json($fees); ?>');
             <?php } else {; ?>
                 // indica que no hay información de un nuevo alumno
                 const newStudentInfo = {};
                 const enrollmentInfo = {};
-                // indica que no hay cuotas predeterminadas
-                const defaultFeeList = [];
             <?php }; ?>
+
+            <?php if ($is_re_enrollment) { ?>
+                const reEnrollmentGroupId = <?php echo $current_group->get_number(); ?>
+            <?php } else { ?>
+                const reEnrollmentGroupId = null;
+            <?php } ?>
 
             // verifica si se está consultando un pago
             <?php if (!$is_read_only && $enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
@@ -302,7 +337,9 @@
                 <div class="alert alert-danger">
                     <span><strong>Atención:</strong> El alumno ha concluido sus estudios en la institución. Ya no es posible registrar nuevos pagos.</span>
                 </div>
-                <a href="/">Regresar</a>
+                <p>
+                    <a href="student_panel.php">Regresar</a>
+                </p>
             <?php } else if ($is_read_only && $payment === null) { ?>
                 <!--Alerta que se muestra cuando no se ha localizado un pago-->
                 <div class="alert alert-danger">
@@ -348,14 +385,20 @@
                                         <span class="field-name">Tutor</span>
                                         <span class="field-value">
                                             <?php if (!$is_read_only) { ?>
-                                                <select id="student-tutor" name="tutor" required>
-                                                    <option value="none" selected disabled>Seleccione uno</option>
-                                                    <?php foreach ($tutors as $tutor) {; ?>
+                                                <select id="student-tutor" name="tutor" required oninput="updateSubmitButtonStatus()">
+                                                    <?php if (count($tutors) == 1) { $tutor = $tutors[0]; ?>
                                                         <option value="<?php echo $tutor->get_number(); ?>">
                                                             <?php echo $tutor->get_full_name(); ?>
                                                         </option>
+                                                    <?php } else { ?>
+                                                        <option value="none" selected disabled>Seleccione uno</option>
+                                                        <?php foreach ($tutors as $tutor) {; ?>
+                                                            <option value="<?php echo $tutor->get_number(); ?>">
+                                                                <?php echo $tutor->get_full_name(); ?>
+                                                            </option>
+                                                        <?php }; ?>
                                                     <?php }; ?>
-                                                </select>   
+                                                </select>
                                             <?php } else {
                                                 echo $payment->get_tutor()->get_full_name();
                                             } ?>
@@ -366,7 +409,15 @@
                             <section class="info col-6 col-s-12">
                                 <div class="field-row">
                                     <span class="field-name">Fecha de pago</span>
-                                    <span class="field-value"><?php echo ($payment !== null) ? $payment->get_date() : date('d/m/Y'); ?></span>
+                                    <span class="field-value">
+                                        <date format="long">
+                                            <?php 
+                                                echo ($payment !== null) ? 
+                                                    $payment->get_date() : 
+                                                    date_create('now', new DateTimeZone('America/Tijuana'))->format('Y-m-d'); 
+                                            ?>
+                                        </date>
+                                    </span>
                                 </div>
                                 <div class="field-row">
                                     <span class="field-name">Ciclo escolar</span>
@@ -520,10 +571,7 @@
                                     </div>
                                 <?php } else { ?>
                                     <div class="control control-col col-4">
-                                        <button type="submit">Continuar</button>
-                                    </div>
-                                    <div class="control control-col col-4">
-                                        <button type="button">Cancelar</button>
+                                        <button type="submit" id="payment-form-submit-button" disabled>Continuar</button>
                                     </div>
                                 <?php } ?>
                             </div>
@@ -531,7 +579,7 @@
                     </div>
                 </form>
                 <!--Cuadro de diálogo de mensaje-->
-                <dialog id="message-dialog">
+                <dialog id="message-dialog" class="col-6 col-s-12">
                     <form id="message-form" action="#" method="dialog" onsubmit="onMessageFormSubmitted(event)">
                         <input type="hidden" name="student_id" value="">
                         <input type="hidden" name="payment_id" value="">
@@ -540,10 +588,14 @@
                         </div>
                         <div class="dialog-body">
                             <p id="message-dialog-success" hidden>La operación se realizó correctamente</p>
-                            <p id="message-dialog-fail" hidden>Ocurrió un error al realizar la operación (<span id="message-dialog-fail-reason">)</p>
+                            <p id="message-dialog-fail" hidden>Ocurrió un error al realizar la operación (<span id="message-dialog-fail-reason"></span>)</p>
                         </div>
                         <div class="dialog-footer">
-                            <button type="submit">Aceptar</button>
+                            <div class="control-row">
+                                <div class="control control-col col-4">
+                                    <button type="submit">Aceptar</button>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </dialog>

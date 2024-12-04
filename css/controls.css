@@ -5,31 +5,33 @@
     --input-disabled-bg: #F5F5F4; /* stone 100 */
     --input-focus-bg: #E2E8F0; /* slate 200 */
     --button-bg: #D4D4D4; /* neutral 300 */
-    --button-disabled-bg: #E5E5E5; /* neutral 200 */
+    --button-disabled-bg: #F5F5F5; /* neutral 100 */
     --button-focus-bg: #CBD5E1; /* slate 300 */
 }
 
-
-button, input, select {
+button,
+select, 
+input:not([type="file"]),
+input[type="file"]::file-selector-button {
     color: #0C0A09;
     border-radius: 4px;
     border-width: 0px;
 }
 
-input, select {
+input:not([type="file"]), select {
     background-color: var(--input-bg);
     padding-left: 8px;
     padding-right: 8px;
 }
 
-input:focus, 
-input:hover, 
+input:not([type="file"]):focus, 
+input:not([type="file"]):hover, 
 select:focus, 
 select:hover {
     background-color: var(--input-focus-bg);
 }
 
-input:disabled, 
+input:not([type="file"]):disabled, 
 select:disabled {
     background-color: var(--input-disabled-bg);
 }
@@ -45,4 +47,9 @@ button:disabled {
 button:not(:disabled):focus, 
 button:not(:disabled):hover {
     background-color: var(--button-focus-bg);
+    cursor: pointer;
+}
+
+input:not([type="file"])::selection {
+    border: 1px solid #fff;
 }

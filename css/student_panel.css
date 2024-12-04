@@ -1,0 +1,17 @@
+#picture-manager {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.student-pic {
+    position: relative;
+    float: left;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.student-pic img {
+    max-height: 160px;
+}

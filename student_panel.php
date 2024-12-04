@@ -4,6 +4,11 @@
         require __DIR__ . '/functions/verify_login.php';
         require __DIR__ . '/models/student.php';
 
+        $event_type = null;
+        if (isset($_GET['event_type'])) { 
+            $event_type = $_GET['event_type'];
+        }
+
         // declara una variable para almacenar la información del alumno
         $student = null;
         $tutors = [];
@@ -11,7 +16,7 @@
         $payments = [];
         $payment_years = [];
         $current_group = null;
-        $current_pic_file_name = null;
+        $pic_file_name = null;
         $enrollment_status_id = EnrollmentStatus::ENROLLED;
 
         // declara una variable para indicar si está habilitado el modo de búscqueda
@@ -42,7 +47,7 @@
                         $current_group = $student->get_current_group($conn);
                         $payments = $student->get_payments($conn);
                         $payment_years = $student->get_payment_years($conn);
-                        $current_pic_file_name = $student->get_current_pic($conn);
+                        $pic_file_name = $student->get_current_pic($conn);
                         $enrollment_status_id = $student->get_enrollment_status()->get_number();
                     }
 
@@ -55,9 +60,9 @@
             }
         }
 
-        $is_pic_set = $current_pic_file_name !== null;
-        $current_pic_file_name = $is_pic_set ? 
-            'pictures/' . $current_pic_file_name :
+        $is_pic_set = $pic_file_name !== null;
+        $pic_file_name = $is_pic_set ? 
+            'pictures/' . $pic_file_name :
             'images/student.png';
     ?>
     <head>
@@ -80,6 +85,7 @@
         <link href="css/theme.css" rel="stylesheet" />
         <link href="css/style.css" rel="stylesheet" />
         <link href="css/dialogs.css" rel="stylesheet" />
+        <link href="css/student_panel.css" rel="stylesheet" />
         <link href="css/fontawesome/fontawesome.css" rel="stylesheet" />
         <link href="css/fontawesome/solid.css" rel="stylesheet" />
         <!--metadata-->
@@ -172,12 +178,29 @@
         <div id="content">
             <h1>Panel de información de alumno</h1>
             <!--Despliega la información de un alumno-->
+            <?php if ($event_type === 'upload_successful') { ?>
+                <div class="alert alert-success">
+                    <span>La fotografía del alumno fue establecida correctamente.</span>
+                </div>
+            <?php } else if ($event_type === 'not_a_valid_image') { ?>
+                <div class="alert alert-danger">
+                    <span><strong>Error: </strong>Formato de imagen no reconocido.</span>
+                </div>    
+            <?php } else if ($event_type === 'invalid_image_format') { ?>
+                <div class="alert alert-danger">
+                    <span><strong>Error: </strong>Formato de imagen no admitido.</span>
+                </div>    
+            <?php } else if ($event_type === 'image_too_big') { ?>
+                <div class="alert alert-danger">
+                    <span><strong>Error: </strong>No se admiten imagenes cuyo tamaño sea superior a 500 KB.</span>
+                </div>    
+            <?php } ?>
             <?php if ($student !== null) {; ?>
                 <?php if ($enrollment_status_id !== EnrollmentStatus::ENROLLED) {; ?>
                     <div class="alert alert-warning">
                         <span>
                             <strong>Información:</strong> El alumno ya no se encuentra inscrito desde 
-                            <?php echo $student->get_withdrawal_date(); ?>.
+                            <date format="long"><?php echo $student->get_withdrawal_date(); ?></date>.
                         </span>
                     </div>
                 <?php }; ?>
@@ -211,46 +234,62 @@
                             </div>
                             <div class="field-row">
                                 <span class="field-name">Fecha de alta</span>
-                                <span class="field-value"><?php echo $student->get_enrollment_date(); ?></span>
+                                <span class="field-value">
+                                    <date format="long">
+                                        <?php echo $student->get_enrollment_date(); ?>
+                                    </date>    
+                                </span>
                             </div>
                             <?php if ($enrollment_status_id !== EnrollmentStatus::ENROLLED) { ?>
                                 <div class="field-row">
                                     <span class="field-name">Fecha de baja</span>
-                                    <span class="field-value"><?php echo $student->get_withdrawal_date(); ?></span>
+                                    <span class="field-value">
+                                        <date format="long">
+                                            <?php echo $student->get_withdrawal_date(); ?>
+                                        </date>
+                                    </span>
                                 </div>
                             <?php } ?>
                         </section>
                         <section class="info col-4 col-s-12">
                             <div class="control-row">
                                 <div class="student-pic">
-                                    <img src="<?php echo $current_pic_file_name; ?>">
+                                    <img src="<?php echo $pic_file_name; ?>">
                                 </div>
                             </div>
-                            <div class="control-row" hidden>
-                                <div class="control control-col col-4">
-                                    <button type="button">Establecer foto</button>
-                                    <button type="button">Remover foto</button>
+                            <?php if ($enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
+                                <div id="picture-manager" class="control-row">
+                                    <?php if (!$is_pic_set) { ?>
+                                        <div class="control control-col col-6 col-m-12 col-s-12">
+                                            <button type="button" onclick="openUploadPictureDialog()">Establecer</button>
+                                        </div>
+                                    <?php } else { ?>
+                                        <div class="control control-col col-6 col-m-12 col-s-12">
+                                            <button type="button" onclick="deletePicture(<?php echo $student->get_student_id(); ?>)">Remover</button>
+                                        </div>
+                                    <?php } ?>
                                 </div>
-                                <form action="actions/upload_picture.php" method="post" enctype="multipart/form-data">
-                                    <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
-                                    <input type="file" name="picture">
-                                    <button type="submit" name="submit">Subir</button>
-                                </form>
-                            </div>
+                            <?php } ?>
                         </section>
                     </div>
-                    <?php if ($enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
-                        <div class="card-footer">
-                            <div class="control-row">
-                                <div class="control control-col col-4">
-                                    <button type="button" onclick="openNewPaymentDialog(<?php echo $student_id; ?>)">Registrar pago</button>
+                    <div class="card-footer">
+                        <div class="control-row">
+                            <?php if ($enrollment_status_id !== EnrollmentStatus::GRADUATED) { ?>
+                                <div class="control control-col col-4 col-s-6">
+                                    <?php if ($enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
+                                        <button type="button" onclick="openNewPaymentDialog(<?php echo $student_id; ?>)">Registrar pago</button>
+                                    <?php } else { ?>
+                                        <button type="button" onclick="openReEnrollmentDialog()">Reinscribir</button>
+                                    <?php } ?>
                                 </div>
-                                <div class="control control-col col-4">
+                            <?php } ?>
+                            <?php if ($enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
+                                <div class="control control-col col-4 col-s-6">
                                     <button type="button" onclick="openWithdrawDialog()">Dar de baja</button>
                                 </div>
-                            </div>
+                            <?php } ?>
                         </div>
-                    <?php } ?>
+                    </div>
                 </div>
                 <!--Sección de información personal-->
                 <div class="card">
@@ -266,7 +305,11 @@
                             </div>
                             <div class="field-row">
                                 <span class="field-name">Fecha de nacimiento</span>
-                                <span class="field-value"><?php echo $student->get_birth_date(); ?></span>
+                                <span class="field-value">
+                                    <date format="long">
+                                        <?php echo $student->get_birth_date(); ?>
+                                    </date>
+                                </span>
                             </div>
                             <div class="field-row">
                                 <span class="field-name">CURP</span>
@@ -306,7 +349,7 @@
                     <?php if ($enrollment_status_id === EnrollmentStatus::ENROLLED) { ?>
                         <div class="card-footer">
                             <div class="control-row">
-                                <div class="control control-col col-4">
+                                <div class="control control-col col-4 col-s-12">
                                     <button onclick="openEditAddressDialog()">Actualizar dirección</button>
                                 </div>
                             </div>
@@ -382,7 +425,7 @@
                     </div>
                     <div class="card-body">
                         <div class="control-row">
-                            <div class="control control-col col-4">
+                            <div class="control control-col col-4 col-s-6">
                                 <label>Filtrar por año</label>
                                 <select id="year-filter-select" oninput="onYearFilterSelectInput(event)">
                                     <option value="all">Todos</option>
@@ -406,7 +449,11 @@
                                 <?php foreach ($payments AS $payment) { if ($payment instanceof Payment) { ?>
                                     <tr data-payment-year="<?php echo date_create($payment->get_date())->format('Y'); ?>">
                                         <td><?php echo $payment->get_payment_id(); ?></td>
-                                        <td><?php echo $payment->get_date(); ?></td>
+                                        <td>
+                                            <date format="medium">
+                                                <?php echo $payment->get_date(); ?>
+                                            </date>
+                                        </td>
                                         <td><?php echo $payment->get_tutor()->get_full_name(); ?></td>
                                         <td><?php echo format_as_currency($payment->get_total_amount()); ?></td>
                                         <td class="two-actions-td">
@@ -492,7 +539,7 @@
                         </div>
                     </form>
                 </dialog>
-                <dialog id="edit-address-dialog" class="col-6">
+                <dialog id="edit-address-dialog" class="col-6 col-s-12">
                     <form id="edit-address-form" action="#" method="dialog" onsubmit="onEditAddressFormSubmitted(event)">
                         <!--Agrega un campo oculto para almacenar la matricula del estudiante-->
                         <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
@@ -536,7 +583,7 @@
                         </div>
                     </form>
                 </dialog>
-                <dialog id="set-ssn-dialog" class="col-4">
+                <dialog id="set-ssn-dialog" class="col-4 col-s-12">
                     <form id="set-ssn-form" action="#" method="dialog" onsubmit="onSetSsnFormSubmitted(event)">
                         <!--Agrega un campo oculto para almacenar la matricula del estudiante-->
                         <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
@@ -561,7 +608,7 @@
                         </div>
                     </form>
                 </dialog>
-                <dialog id="withdraw-dialog" class="col-3">
+                <dialog id="withdraw-dialog" class="col-3 col-s-6">
                     <form id="withdraw-form" action="#" method="dialog" onsubmit="onWithdrawFormSubmitted(event)">
                         <!--Agrega un campo oculto para almacenar la matricula del estudiante-->
                         <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
@@ -572,7 +619,7 @@
                         <div class="dialog-body">
                             <p>Razón</p>
                             <div class="control-row">
-                                <input type="radio" id="withdraw-option" name="reason" value="3">
+                                <input type="radio" id="withdraw-option" name="reason" value="3" checked>
                                 <label for="withdraw-option">Solicitado por tutor</label>
                             </div>
                             <div class="control-row">
@@ -587,7 +634,78 @@
                         <div class="dialog-footer">
                             <div class="control-row">
                                 <div class="control control-col col-12">
-                                    <button type="submit">Establecer</button>
+                                    <button type="submit" disabled>Establecer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </dialog>
+                <dialog id="upload-picture-dialog" class="col-4 col-m-6 col-s-12">
+                    <form action="actions/upload_picture.php" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
+                        <div class="dialog-header">
+                            <span class="dialog-close-btn">&times;</span>
+                            <h2>Subir fotografía</h2>
+                        </div>
+                        <div class="dialog-body">
+                            <div class="control-row">
+                                <div class="student-pic">
+                                    <img id="picture-preview" src="">
+                                </div>
+                            </div>
+                            <div class="control-row">
+                                <div class="control control-col col-12">
+                                    <input type="file" id="picture-input" name="picture" accept="image/*" onchange="onPictureUploaded()">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dialog-footer">
+                            <div class="control-row">
+                                <div class="control control-col col-6 col-s-12">
+                                    <button type="submit" id="submit-picture-button" name="submit" disabled>Subir</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </dialog>
+                <dialog id="re-enrollment-dialog" class="col-4 col-m-6 col-s-12">
+                    <form id="edit-address-form" action="payment_panel.php" method="GET">
+                        <!--Agrega un campo oculto para almacenar la matricula del estudiante-->
+                        <input type="hidden" name="student_id" value="<?php echo $student->get_student_id(); ?>">
+                        <div class="dialog-header">
+                            <span class="dialog-close-btn">&times;</span>
+                            <h2>Reinscribir</h2>
+                        </div>
+                        <div class="dialog-body">
+                            <div class="control-row">
+                                <div class="control control-col col-6">
+                                    <label for="re-enrollment-education-level">Nivel educativo</label>
+                                    <select id="re-enrollment-education-level" name="education_level_id" required oninput="changeEducationLevel()">
+                                        <option value="none" selected disabled>Seleccione uno</option>
+                                        <?php foreach (EducationLevel::get_all() as $level) {; ?>
+                                            <option value="<?php echo $level->get_code(); ?>">
+                                                <?php echo $level->get_description(); ?>
+                                            </option>
+                                        <?php }; ?>
+                                    </select>
+                                </div>
+                                <div class="control control-col col-6">
+                                    <label for="re-enrollment-group">Grupo</label>
+                                    <select id="re-enrollment-group" name="group_id" required disabled oninput="changeGroup()">
+                                        <option value="none" selected disabled>Seleccione uno</option>
+                                        <?php foreach (SchoolYear::get()->get_groups() as $group) { if ($group instanceof Group) {; ?>
+                                            <option hidden data-level="<?php echo $group->get_education_level()->get_code(); ?>" value="<?php echo $group->get_number(); ?>">
+                                                <?php echo $group; ?>
+                                            </option>
+                                        <?php } }; ?>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dialog-footer">
+                            <div class="control-row">
+                                <div class="control control-col col-4">
+                                    <button type="submit" id="re-enrollment-submit" disabled>Continuar</button>
                                 </div>
                             </div>
                         </div>
@@ -613,6 +731,7 @@
                                         <td data-field-name="full_name"></td>
                                         <td data-field-name="curp"></td>
                                         <td data-field-name="group"></td>
+                                        <td data-field-name="status"></td>
                                         <td data-field-name="actions">
                                             <button type="button" class="btn-icon" data-action-name="view" title="Ver">
                                                 <i class="fa-solid fa-user"></i>
@@ -626,6 +745,7 @@
                                         <th>Nombre</th>
                                         <th>CURP</th>
                                         <th>Grupo</th>
+                                        <th>Estado</th>
                                         <th class="one-action-th"></th>
                                     </tr>
                                 </thead>

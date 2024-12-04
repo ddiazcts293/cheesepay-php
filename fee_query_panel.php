@@ -317,8 +317,14 @@
                                             <?php if ($education_level_id === null) { ?>
                                                 <td><?php echo $fee->get_education_level()->get_description(); ?></td>
                                             <?php } ?>
-                                            <td><?php echo $fee->get_month(); ?></td>
-                                            <td><?php echo $fee->get_due_date(); ?></td>
+                                            <td>
+                                                <date format="month-only">
+                                                    <?php echo $fee->get_month(); ?>
+                                                </date>
+                                            </td>
+                                            <td>
+                                                <date format="long"><?php echo $fee->get_due_date(); ?></date>
+                                            </td>
                                             <td>
                                                 <?php if ($fee->get_is_vacation()) { ?>
                                                     Si
@@ -336,7 +342,11 @@
                                             </td>
                                         <?php } else if ($fee instanceof SpecialEventFee) { ?>
                                             <td><?php echo $fee->get_concept(); ?></td>
-                                            <td><?php echo $fee->get_scheduled_date(); ?></td>
+                                            <td>
+                                                <date format="long">
+                                                    <?php echo $fee->get_scheduled_date(); ?>
+                                                </date>
+                                            </td>
                                         <?php } else { ?>
                                             <td><?php echo $fee->get_concept(); ?></td>
                                         <?php } ?>
@@ -377,8 +387,8 @@
                         </template>
                         <thead>
                             <tr>
-                                <th>Folio de pago</th>
-                                <th>Fecha de pago</th>
+                                <th>Folio</th>
+                                <th>Fecha</th>
                                 <th>Matrícula</th>
                                 <th>Nombre</th>
                                 <th>Apellido paterno</th>
@@ -393,7 +403,7 @@
                 <div class="dialog-footer">
                     <div class="control-row">
                         <div class="control control-col col-4">
-                            <button type="submit">Cerrar</button>
+                            <button type="submit" tabindex="-1">Cerrar</button>
                         </div>
                     </div>
                 </div>

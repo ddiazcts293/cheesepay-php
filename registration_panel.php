@@ -33,6 +33,7 @@
         <link href="css/alerts.css" rel="stylesheet" />
         <link href="css/theme.css" rel="stylesheet" />
         <link href="css/dialogs.css" rel="stylesheet" />
+        <link href="css/registration_panel.css" rel="stylesheet" />
         <link href="css/fontawesome/fontawesome.css" rel="stylesheet" />
         <link href="css/fontawesome/solid.css" rel="stylesheet" />
         <!--metadata-->
@@ -173,7 +174,7 @@
                             <div class="control control-col col-4 col-s-6">
                                 <label for="student-education-level">Nivel educativo</label>
                                 <select id="student-education-level" name="education_level_id" required oninput="changeEducationLevel()">
-                                    <option value="none">Seleccione uno</option>
+                                    <option value="none" selected disabled>Seleccione uno</option>
                                     <?php foreach ($education_levels as $level) {; ?>
                                         <option value="<?php echo $level->get_code(); ?>">
                                             <?php echo $level->get_description(); ?>

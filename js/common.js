@@ -18,6 +18,38 @@ function initCommon() {
             menu.classList.toggle('show'); 
         });
     }
+
+    formatDocumentDates();
+}
+
+// formatea todas las fechas presentes en el documento
+function formatDocumentDates() {
+    const elements = document.getElementsByTagName('date');
+    for (let index = 0; index < elements.length; index++) {
+        const element = elements[index];
+        // crea una fecha estableciendo como hora 12:00am para asegurar que no
+        // muestre la hora de UTC
+
+        let date = new Date(element.textContent.trim() + 'T00:00:00');
+        let format = 'short';
+        let result;
+
+        if (element.hasAttribute('format')) {
+            format = element.getAttribute('format');
+        }
+
+        result = formatDate(date, format);
+
+        if (format === 'long' || format === 'medium' || format === 'short') {
+            let fullDate = date.toLocaleDateString('es-MX', {
+                dateStyle: 'full'
+            });
+
+            element.setAttribute('title', fullDate);
+        }
+
+        element.textContent = result;
+    }
 }
 
 // muestra un elemento
@@ -32,10 +64,42 @@ function hideElement(elementId) {
     element.hidden = true;
 }
 
+
+function formatDate(date, format) {
+    switch (format) {
+        case 'year-only':
+            return date.toLocaleDateString('es-MX', {
+                year: 'numeric'
+            });
+        case 'month-only': 
+            return date.toLocaleDateString('es-MX', {
+                month: 'long'
+            });
+        case 'full':
+            return date.toLocaleDateString('es-MX', {
+                dateStyle: 'full'
+            });
+        case 'long':
+            return date.toLocaleDateString('es-MX', {
+                dateStyle: 'long'
+            });
+        case 'medium':
+            return date.toLocaleDateString('es-MX', {
+                dateStyle: 'medium'
+            });
+        case 'short':
+            return date.toLocaleDateString('es-MX', {
+                dateStyle: 'short'
+            });
+        default:
+            return date.toDateString();
+    }
+}
+
 // formateador de números como moneda
-const formatter = new Intl.NumberFormat('en-US', { 
+const currencyFormatter = new Intl.NumberFormat('en-US', { 
     style: 'currency', 
-    currency: 'USD' 
+    currency: 'USD'
 });
 
 // agrega un manejador de eventos para cuando la página termina de cargar

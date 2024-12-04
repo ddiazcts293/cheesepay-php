@@ -7,6 +7,7 @@ require_once __DIR__ . '/tutor.php';
 require_once __DIR__ . '/group.php';
 require_once __DIR__ . '/person.php';
 require_once __DIR__ . '/payment.php';
+require_once __DIR__ . '/student_status.php';
 
 final class Student extends Person {
     private static $select = 'SELECT
@@ -130,14 +131,24 @@ final class Student extends Person {
     private static $delete_current_pic = 
         'DELETE FROM fotos 
          WHERE alumno = ? 
-         AND ciclo = fn_obtener_ciclo_escolar_actual';
+         AND ciclo = fn_obtener_ciclo_escolar_actual()';
 
-    private static $get_current_pic =
-        'SELECT f.nombre_archivo AS file_name
-         FROM fotos AS f
-         INNER JOIN alumnos AS a ON f.alumno = a.matricula
-         WHERE a.matricula = ? 
-         AND f.ciclo = fn_obtener_ciclo_escolar_actual()';
+    private static $select_current_pic =
+        'SELECT nombre_archivo AS file_name
+         FROM fotos
+         WHERE alumno = ? 
+         AND ciclo = fn_obtener_ciclo_escolar_actual()';
+
+    private static $select_student_status = 
+        'SELECT 
+            esta_inscrito AS is_active,
+            esta_al_corriente AS is_up_to_date,
+            pago_inscripcion AS has_paid_enrollment,
+            pago_mantenimiento AS has_paid_maintenance,
+            pago_papeleria AS has_paid_stationery,
+            pago_uniforme AS has_paid_uniform
+         FROM vw_estado_alumnos
+         WHERE alumno = ?';
 
     // attributes
     private $student_id;
@@ -400,6 +411,26 @@ final class Student extends Person {
         return $group;
     }
 
+    public function get_status(MySqlConnection $conn = null) : StudentStatus {
+        if ($conn === null) {
+            $conn = new MySqlConnection();
+        }
+
+        $param_list = new MySqlParamList();
+        $param_list->add('s', $this->student_id);
+        $resultset = $conn->query(self::$select_student_status, $param_list);
+        $row = $resultset[0];
+
+        return new StudentStatus(
+            $row['is_active'],
+            $row['is_up_to_date'],
+            $row['has_paid_enrollment'],
+            $row['has_paid_maintenance'],
+            $row['has_paid_stationery'],
+            $row['has_paid_uniform']
+        );
+    }
+
     public function update_address(MySqlConnection $conn = null) : void {
         // verifica si se recibió una conexión previamente iniciada
         if ($conn === null) {
@@ -467,6 +498,18 @@ final class Student extends Person {
         // crea la lista de parámetros con los datos provistos
         $param_list = new MySqlParamList();
         $param_list->add('s', $this->student_id);
+
+        // obtiene la fotografia actual
+        $current_pic = $this->get_current_pic($conn);
+        // verificar si el alumno tiene una foto establecida
+        if ($current_pic !== null) {
+            // borra la foto actual del registro en la base de datos
+            $conn->query(self::$delete_current_pic, $param_list);
+            // borra la foto del sistema de archivos
+            unlink(__DIR__ . '/../pictures/' . $current_pic);
+        }
+
+        // añade el nombre del archivo
         $param_list->add('s', $picture_name);
 
         //ejecuta la consulta
@@ -486,8 +529,17 @@ final class Student extends Person {
         $param_list = new MySqlParamList();
         $param_list->add('s', $this->student_id);
 
-        //ejecuta la consulta
+        // obtiene la fotografia actual
+        $current_pic = $this->get_current_pic($conn);
+
+        // borra el registro de la foto en la base de datos
         $conn->query(self::$delete_current_pic, $param_list);
+
+        // verificar si el alumno tenia una foto establecida
+        if ($current_pic !== null) {
+            // borra la foto del sistema de archivos
+            unlink(__DIR__ . '/../pictures/' . $current_pic);
+        }
     }
 
     public function get_current_pic(MySqlConnection $conn = null) : string|null {
@@ -502,7 +554,7 @@ final class Student extends Person {
         $param_list->add('s', $this->student_id);
 
         //ejecuta la consulta
-        $resultset = $conn->query(self::$select_current_group, $param_list);
+        $resultset = $conn->query(self::$select_current_pic, $param_list);
 
         if (count($resultset) == 1) {
             return $resultset[0]['file_name'];

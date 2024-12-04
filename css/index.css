@@ -1,0 +1,48 @@
+.stats-container {
+    position: relative;
+    float: left;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.card {
+    border: none;
+    color: #FAFAF9;
+    margin-left: 0px;
+    margin-right: 0px;
+    width: 100%;
+    height: calc(100% - 16px);
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+.stats-header {
+    font-size: 12pt;
+    font-weight: bold;
+}
+
+.stats-subheader {
+    font-size: 10pt;
+}
+
+#student-count {
+    background-color: #EF4444; /* red 500 */
+}
+
+#payment-count {
+    background-color: #F97316; /* orange 400 */
+}
+
+#payments-due-count {
+    background-color:  #F59E0B; /* amber 400 */
+}
+
+#events-count {
+    background-color: #10B981; /* emerald 400 */
+}
+
+#groups {
+    background-color: #6366F1; /* indigo 400 */
+}

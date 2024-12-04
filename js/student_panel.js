@@ -14,8 +14,20 @@ function openWithdrawDialog() {
     showDialog('withdraw-dialog');
 }
 
+function openUploadPictureDialog() {
+    showDialog('upload-picture-dialog');
+}
+
+function openReEnrollmentDialog() {
+    showDialog('re-enrollment-dialog');
+}
+
 function openNewPaymentDialog(studentId) {
     window.location.href = 'payment_panel.php?student_id=' + studentId;
+}
+
+function deletePicture(studentId) {
+    window.location.href = 'actions/delete_picture.php?student_id=' + studentId;
 }
 
 // abre el cuadro de diálogo para ver la información de un tutor
@@ -119,6 +131,7 @@ function showFoundStudents(results) {
         const fullName = item['full_name'];
         const group = item['group'];
         const studentId = item['student_id'];
+        const status = item['status'];
 
         tbody.appendChild(template.content.cloneNode(true));
         let addedRow = tbody.lastElementChild;
@@ -127,12 +140,14 @@ function showFoundStudents(results) {
         let fullNameField = addedRow.querySelector('[data-field-name=\'full_name\']');
         let groupField = addedRow.querySelector('[data-field-name=\'group\']');
         let studentIdField = addedRow.querySelector('[data-field-name=\'student_id\']');
+        let statusField = addedRow.querySelector('[data-field-name=\'status\']');
         let viewButton = addedRow.querySelector('[data-action-name=\'view\']');
 
         curpField.textContent = curp;
         fullNameField.textContent = fullName;
         groupField.textContent = educationLevel + ' ' + group;
         studentIdField.textContent = studentId;
+        statusField.textContent = status;
         viewButton.setAttribute('data-action-arg', studentId);
         viewButton.onclick = function() {
             window.location.href = window.location.origin + 
@@ -158,6 +173,45 @@ function printInvoice(paymentId) {
 
 function viewPayment(paymentId) {
     window.location.href = 'payment_panel.php?payment_id=' + paymentId;
+}
+
+function changeEducationLevel() {
+    const educationLevelSelect = document.getElementById('re-enrollment-education-level');
+    const groupSelect = document.getElementById('re-enrollment-group');
+    const submitButton = document.getElementById('re-enrollment-submit');
+    const groupOptions = groupSelect.querySelectorAll('option');
+    const selectedValue = educationLevelSelect.value;
+
+    if (selectedValue !== 'none') {
+        // habilita el selector de grupo 
+        groupSelect.removeAttribute('disabled');
+        //filtra los grupos
+        groupOptions.forEach(option => {
+            const level = option.getAttribute('data-level');
+            if (level !== null) {
+                option.hidden = level !== selectedValue;
+            }
+        });
+
+        groupSelect.value = null;
+    }
+    // de lo contrario deshabilita el selector de grupo y el botón de continuar
+    else {
+        groupSelect.setAttribute('disabled', true);
+        submitButton.setAttribute('disabled', true);
+    }
+}
+
+function changeGroup() {
+    const groupSelect = document.getElementById('re-enrollment-group');
+    const submitButton = document.getElementById('re-enrollment-submit');
+    const selectedValue = groupSelect.value;
+
+    if (selectedValue !== 'none') {
+        submitButton.removeAttribute('disabled');
+    } else {
+        submitButton.setAttribute('disabled', true);
+    }
 }
 
 /* manejo de eventos */
@@ -348,4 +402,26 @@ function onWithdrawFormSubmitted(event) {
     xhr.open('POST', 'actions/withdraw_student.php');
     // envia la petición junto con los datos del formulario
     xhr.send(formData);
+}
+
+function onPictureUploaded() {
+    const input = document.getElementById('picture-input');
+    const submitButton = document.getElementById('submit-picture-button');
+    const file = input.files[0];
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const preview = document.getElementById('picture-preview');
+            preview.src = event.target.result;
+        };
+
+        reader.readAsDataURL(file);
+
+        // habilita el botón para enviar
+        submitButton.removeAttribute('disabled');
+    } else {
+        // deshabilita el botón para enviar
+        submitButton.setAttribute('disabled', true);
+    }
 }

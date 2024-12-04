@@ -47,17 +47,32 @@ function changeEducationLevel() {
             // actualiza los controles de grado y grupo
             gradeInput.value = 1;
             gradeInput.max = maxGrade;
+            // habilita los selectores de grado, grupo y fecha de nacimiento
             gradeInput.removeAttribute('disabled');
             groupSelector.removeAttribute('disabled');
             birthDateSelector.removeAttribute('disabled');
 
-            // calcula las fecha máxima y mínima
-            let maxDate = new Date(new Date(Date.now()).setMonth(-11 * minimumAge));
-            let minDate = new Date(new Date(Date.now()).setMonth(-11 * maximumAge));
+            // calcula la fecha máxima y fecha mínima seleccionable
+            /*
+                Para el límite superior:
+                - se calcula a partir de la fecha actual restándole la edad 
+                mínima.
+                Para el límite inferior:
+                - se calcula a partir de la fecha actual restándole la edad
+                máxima.
+            */
+           let maxDate = new Date(Date.now());
+           maxDate.setFullYear(maxDate.getFullYear() - minimumAge);
+           maxDate.setHours(0, 0, 1);
 
-            // establece los límites de fechas
-            //dateOfBirhtSelector.min = minDate.toISOString().substring(0,10);
-            //dateOfBirhtSelector.max = maxDate.toISOString().substring(0, 10);
+           let minDate = new Date(Date.now());
+           minDate.setFullYear(minDate.getFullYear() - (maximumAge + 1));
+           minDate.setHours(24);
+           
+            //establece los límites de fechas
+            birthDateSelector.min = minDate.toISOString().substring(0,10);
+            birthDateSelector.max = maxDate.toISOString().substring(0, 10);
+            birthDateSelector.value = minDate.toISOString().substring(0,10);
 
             // carga los grupos para el grado seleccionado
             changeGrade();

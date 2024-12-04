@@ -7,11 +7,9 @@ let feeRowId = 1;
 // inicializa el document
 function init() {
     console.log('Initializing document...');
-    
-    if (isNewStudent) {
-        addedFees = defaultFeeList;
-        console.log('Default fees for new students added');
-    }
+    console.log('Added default fees');
+    addedFees = defaultFeeList;
+    updateSubmitButtonStatus();
 }
 
 // consulta la información de una cuota en la base de datos
@@ -92,7 +90,7 @@ function addFeeToList(fee) {
     
     // establece los valores
     conceptField.textContent = fee['concept'];
-    costField.textContent = formatter.format(fee['cost']);
+    costField.textContent = currencyFormatter.format(fee['cost']);
     addedRow.setAttribute('data-row-id', rowId);
     addedRow.setAttribute('data-attachment', fee['number']);
     removeButton.setAttribute('data-action-arg', rowId);
@@ -132,7 +130,8 @@ function updatePaymentTotal() {
     let total = 0;
 
     addedFees.forEach(fee => { total += fee['cost']; });
-    totalAmountCell.textContent = formatter.format(total);
+    totalAmountCell.textContent = currencyFormatter.format(total);
+    updateSubmitButtonStatus();
 }
 
 function showMessageDialog(success, studentId, paymentId = null, reason = null) {
@@ -235,6 +234,72 @@ function registerStudent() {
     xhr.send(formData);
 }
 
+function reEnrollStudent() {
+    // verifica si se está registrando a un alumno
+    if (!isReEnrollment) {
+        console.log('Invalid state');
+        return;
+    }
+    
+    const tutorSelector = document.getElementById('student-tutor');
+    if (tutorSelector.value === 'none') {
+        return;
+    }
+
+    // crea un arreglo para almacenar los identificadores de las cuotas a pagar
+    let paymentFees = [];
+    for (let index = 0; index < addedFees.length; index++) {
+        const fee = addedFees[index];
+        paymentFees.push(fee['number']);
+    }
+
+    // crea un nuevo archivo JSON con los datos requeridos
+    let payload = {
+        student_id: studentId,
+        tutor_id: parseInt(tutorSelector.value),
+        fees: paymentFees,
+        re_enrollment_group_id: reEnrollmentGroupId
+    };
+
+    let formData = new FormData();
+    formData.append('payment_info', JSON.stringify(payload));
+
+    // crea un cliente para realizar peticiones HTTP
+    let xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function () {
+        // verifica si el estado del cliente es completa y si el código de
+        // respuesta es válido (200)
+        if (this.readyState == XMLHttpRequest.DONE && this.status == 200) {
+            // obtiene la respuesta en formato json
+            let response = JSON.parse(this.responseText);
+
+            // verifica si el resultado de la operación en la base de datos fue
+            // existosa
+            if (response['status'] === 'ok') {
+                // imprime el mensaje obtenido en la operación
+                console.log(response);
+
+                // obtiene el identificador del pago registrado
+                let paymentId = response['data']['payment_id'];
+                console.log('Student was registered successfully, id:', studentId);
+
+                showMessageDialog(true, studentId, paymentId);
+            } else {
+                let reason = response['message'];
+                
+                // imprime el mensaje obtenido en la operación
+                console.error(reason);
+                showMessageDialog(false, null, null, reason);
+            }
+        }
+    };
+
+    // establece el tipo de método y la URL de la petición
+    xhr.open('POST', 'actions/register_payment.php');
+    // envia la petición con los datos
+    xhr.send(formData);
+}
+
 // realiza el registro de un pago
 function registerPayment() {
     // verifica si no se está registrando a un alumno
@@ -309,6 +374,22 @@ function printInvoice(paymentId) {
         'popup_window',
         'scrollbars=no,resizable=no,status=no,location=no,toolbar=no,menubar=no,width=1200,height=800,left=100,top=100'
     );
+}
+
+function updateSubmitButtonStatus() {
+    const button = document.getElementById('payment-form-submit-button');
+    const tutorSelect = document.getElementById('student-tutor');
+
+    let enable = addedFees.length > 0;
+    if (tutorSelect !== null) {
+        enable &= tutorSelect.value !== 'none';
+    }
+
+    if (enable) {
+        button.removeAttribute('disabled');
+    } else {
+        button.setAttribute('disabled', true);
+    }
 }
 
 /* manejo de eventos */
@@ -450,6 +531,8 @@ function onPaymentFormSubmitted(event) {
 
     if (isNewStudent) {
         registerStudent();
+    } else if (isReEnrollment) {
+        reEnrollStudent();
     } else {
         registerPayment();
     }

@@ -167,7 +167,11 @@
                         </div>
                     </div>
                     <div class="card-footer">
-                        <button type="submit">Actualizar</button>
+                        <div class="control-row">
+                            <div class="control control-col col-4">
+                                <button type="submit">Actualizar</button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             <div/>

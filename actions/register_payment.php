@@ -45,9 +45,18 @@ function register_payment(array $payment_info) : QueryResponse {
         $student_id = $payment_info['student_id'];
         $tutor_id = $payment_info['tutor_id'];
         $fees = $payment_info['fees'];
+        $group_id = isset($payment_info['re_enrollment_group_id']) ? 
+            $payment_info['re_enrollment_group_id'] : 
+            null;
 
         // crear un nuevo pago
         $payment = Payment::create($tutor_id, $student_id, $db_conn);
+
+        // verifica se estableció un grupo para reinscribir
+        if ($group_id !== null) {
+            // inscribe al alumno en el grupo
+            Group::register_student_in_group($group_id, $student_id);
+        }
 
         // realiza el registro de las cuotas
         $payment->add_fee($fees, $db_conn);
