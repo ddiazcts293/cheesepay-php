@@ -19,7 +19,7 @@ final class Tutor extends Person {
          WHERE numero = ?';
 
     private static $insert = 
-        'INSERT INTO tutores VALUES(NULL,?,?,?,?,?,?)';
+        'INSERT INTO tutores VALUES(NULL,?,?,?,?,?,?,NULL)';
 
     private static $insert_tutor_student = 
         'INSERT INTO tutor_alumnos VALUES(?, ?, ?)';
