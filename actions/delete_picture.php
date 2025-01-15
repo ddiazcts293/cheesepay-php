@@ -18,7 +18,7 @@ if (isset($_GET['student_id'])) {
     }
 
     // redirige al panel de información del alumnos
-    header('Location: /student_panel.php?student_id=' . $student_id);
+    header('Location: /cheesepay/student_panel.php?student_id=' . $student_id);
 } else {
-    header('Location: /student_panel.php');
+    header('Location: /cheesepay/student_panel.php');
 }

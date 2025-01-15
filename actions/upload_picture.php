@@ -50,9 +50,9 @@ if (isset($_POST['student_id'], $_FILES['picture']['tmp_name']) &&
         $event_type = 'student_was_not_found';
     }
 
-    header('Location: /student_panel.php?student_id=' . $student_id . 
+    header('Location: /cheesepay/student_panel.php?student_id=' . $student_id . 
         '&event_type=' . $event_type
     );
 } else {
-    header('Location: /student_panel.php');
+    header('Location: /cheesepay/student_panel.php');
 }

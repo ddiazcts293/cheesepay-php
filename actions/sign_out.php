@@ -15,4 +15,4 @@ if (isset($_SESSION['token'])) {
 // destruye la sesion
 session_destroy();
 // redirige a login
-header('Location: /login.php');
+header('Location: /cheesepay/login.php');

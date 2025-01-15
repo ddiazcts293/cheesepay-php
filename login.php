@@ -5,7 +5,7 @@
         session_start();
 
         if (isset($_SESSION['token'])) {
-            header('Location: index.php');
+            header('Location: /cheesepay/index.php');
         }
 
         $sign_in_failed = isset($_GET['event_type']) && 

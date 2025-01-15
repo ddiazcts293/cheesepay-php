@@ -18,13 +18,13 @@ if (isset($_POST['user_id'], $_POST['password'])) {
         $_SESSION['token'] = $user->get_auth_token();
         
         // redirige a index
-        header('Location: /index.php');
+        header('Location: /cheesepay/index.php');
     } else {
         // redirect to login again
-        header('Location: /login.php?event_type=invalid_credentials');
+        header('Location: /cheesepay/login.php?event_type=invalid_credentials');
     }
 } 
 // de lo contrario, redirige a la página de inico de sesión
 else {
-    header('Location: login.php');
+    header('Location: /cheesepay/login.php');
 }

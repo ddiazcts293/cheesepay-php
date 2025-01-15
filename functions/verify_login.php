@@ -23,5 +23,5 @@ if (isset($_SESSION['token'])) {
 // verifica si no se obtuvo acceso
 if ($user === null) {
     // redirige a la página de inicio de sesión
-    header('Location: login.php');
+    header('Location: /cheesepay/login.php');
 }

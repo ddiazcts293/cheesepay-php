@@ -16,7 +16,7 @@ if ($are_params_set) {
     $confirm_password = $_POST['confirm_password'];
 
     if ($new_password != $confirm_password) {
-        header('Location: /user_panel.php?event_type=password_mismatch');
+        header('Location: /cheesepay/user_panel.php?event_type=password_mismatch');
     } else {
         $success = User::change_password($user_id, $current_password, $new_password);
         if ($success) {
@@ -30,9 +30,9 @@ if ($are_params_set) {
             session_start();
             $_SESSION['token'] = $user->get_auth_token();
     
-            header('Location: /user_panel.php?event_type=change_password_successfully');
+            header('Location: /cheesepay/user_panel.php?event_type=change_password_successfully');
         } else {
-            header('Location: /user_panel.php?event_type=change_password_failed');
+            header('Location: /cheesepay/user_panel.php?event_type=change_password_failed');
         }
     }
 }
